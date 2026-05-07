@@ -1,7 +1,7 @@
 import { Lightbulb } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import Button from "../../button/Button";
-import { postOpenAi } from "@/app/services/postOpenAi";
+import { postArticle } from "@/app/services/postArticle";
 import { BottomCtaProps } from "@/app/types/BottomCtaType";
 
 export default function BottomCta({
@@ -21,7 +21,7 @@ export default function BottomCta({
     setIsLoading(true);
 
     try {
-      const response = await postOpenAi({
+      const response = await postArticle({
         selectedTemplate,
         blogTitleValue,
         blogDescriptionValue,

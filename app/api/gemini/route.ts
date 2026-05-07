@@ -3,8 +3,8 @@ import {
   getSystemPrompt,
   parseBlogGenerationBody,
 } from "@/app/lib/blogGenerationPrompt";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,31 +21,30 @@ export async function POST(request: NextRequest) {
     const { topicStr, description, keywords, styleKey } =
       parseBlogGenerationBody(body as Record<string, unknown>);
 
-    if (!process.env.OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY가 설정되지 않았습니다.");
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GEMINI_APT_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY가 설정되지 않았습니다.");
       return NextResponse.json(
         { error: "서버 설정 오류입니다." },
         { status: 500 }
       );
     }
 
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
+    const genAI = new GoogleGenerativeAI(apiKey);
     const systemPrompt = getSystemPrompt(styleKey);
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
 
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_tokens: 2000,
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json",
+      },
     });
 
-    const content = completion.choices[0]?.message?.content?.trim();
+    const completion = await model.generateContent(userPrompt);
+    const content = completion.response.text()?.trim();
     let result: Record<string, unknown> = {};
     if (content) {
       try {
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
       keywords: keywordsResult,
     });
   } catch (error) {
-    console.error("API Error:", error);
+    console.error("Gemini API Error:", error);
     const message = error instanceof Error ? error.message : String(error);
     const status =
       message.includes("400") || message.includes("Invalid") ? 400 : 500;
