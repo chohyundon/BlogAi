@@ -1,0 +1,9 @@
+#!/bin/sh
+# 커밋 직후 현재 브랜치를 origin에 push합니다.
+# 원격 이름이 origin이 아니면 환경 변수 GIT_PUSH_REMOTE 로 지정하세요.
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null) || exit 0
+[ "$branch" = "HEAD" ] && exit 0
+
+remote="${GIT_PUSH_REMOTE:-origin}"
+exec git push "$remote" "$branch"
