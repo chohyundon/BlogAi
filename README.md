@@ -2,23 +2,38 @@
 
 Next.js(App Router) + TypeScript + Tailwind CSS 프로젝트입니다.
 
-## 프로젝트 구조
+## 프로젝트 구조 (Feature-Sliced Design)
+
+[next.js 문서의 `src` 디렉터리](https://nextjs.org/docs/app/building-your-application/configuring/src-directory)를 사용합니다.
 
 ```
 self/
-├── app/                 # App Router (페이지, 레이아웃, 글로벌 스타일)
-│   ├── layout.tsx       # 루트 레이아웃
-│   ├── page.tsx        # 홈 페이지
-│   └── globals.css     # 전역 CSS
-├── components/         # 재사용 UI 컴포넌트
-├── lib/                # 유틸, 헬퍼 함수
-│   └── utils.ts        # cn() 등
-├── types/              # 공통 TypeScript 타입
-├── public/             # 정적 파일 (이미지, 아이콘 등)
-├── next.config.ts
-├── tailwind (postcss.config.mjs)
+├── src/
+│   ├── app/                 # 라우팅·API 라우트·글로벌 스타일 (Next App Router 전용)
+│   ├── shared/
+│   │   ├── ui/              # 버튼·모달 등 공통 UI
+│   │   ├── api/             # 예: Supabase 클라이언트
+│   │   ├── lib/             # 프롬프트 등 순수 헬퍼
+│   │   ├── config/          # 사이드바·헤더·로그인 상수 등
+│   │   └── types/           # DB 등 공통 타입
+│   ├── entities/
+│   │   ├── article/api       # 게시 작성 API 클라이언트 등
+│   │   ├── template/         # config·model·API·목 데이터
+│   │   └── user/api
+│   ├── features/            # 시나리오 단위(auth·글 작성·대시보드·마이페이지 등)
+│   └── widgets/             # 헤더·앱 쉘·랜딩·템플릿 쇼케이스 등 UI 블록
+├── public/
+├── proxy.ts
+├── next.config.js
+├── postcss.config.mjs
 └── tsconfig.json
 ```
+
+경로 별칭은 `tsconfig`의 `@/*` → `./src/*` 입니다.
+
+## FSD 규약
+
+폴더 배치와 import 방향 검토 시 `.cursor/skills/feature-sliced-design/SKILL.md` 를 참고하면 됩니다.
 
 ## 실행
 
