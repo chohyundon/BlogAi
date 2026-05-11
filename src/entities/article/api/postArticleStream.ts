@@ -15,6 +15,7 @@ type StreamDonePayload = {
 
 type PostArticleStreamOptions = {
   onDelta: (preview: ArticleStreamDelta) => void;
+  signal?: AbortSignal;
 };
 
 function streamEndpoint(): "/api/openai" | "/api/gemini" {
@@ -32,6 +33,7 @@ export async function postArticleStream(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...data, stream: true }),
+    ...(options.signal ? { signal: options.signal } : {}),
   });
 
   const contentType = res.headers.get("content-type") ?? "";
@@ -111,17 +113,24 @@ export async function postArticleStream(
     }
   };
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    lineBuffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      lineBuffer += decoder.decode(value, { stream: true });
 
-    const segments = lineBuffer.split("\n\n");
-    lineBuffer = segments.pop() ?? "";
+      const segments = lineBuffer.split("\n\n");
+      lineBuffer = segments.pop() ?? "";
 
-    for (const segment of segments) {
-      handleSseBlock(segment);
+      for (const segment of segments) {
+        handleSseBlock(segment);
+      }
     }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw err;
+    }
+    throw err;
   }
 
   decoder.decode();

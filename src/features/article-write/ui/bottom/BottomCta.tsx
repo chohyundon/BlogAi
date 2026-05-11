@@ -1,51 +1,33 @@
+"use client";
+
 import { Lightbulb } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
-import { postArticleStream } from "@/entities/article/api/postArticleStream";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
+import { saveWriteGeneratingPayload } from "@/features/article-write/lib/writeGeneratingSession";
 
 export default function BottomCta({
   selectedTemplate,
   blogTitleValue,
   blogDescriptionValue,
   keywords,
-  setIsLoading,
-  setGeneratedArticle,
-  onStreamDelta,
-  onStreamBegin,
-  onStreamComplete,
 }: BottomCtaProps) {
-  const handleGenerateArticle = async () => {
+  const router = useRouter();
+
+  const handleGenerateArticle = () => {
     if (blogTitleValue.trim() === "" || blogDescriptionValue.trim() === "") {
       toast.warning("블로그 제목 아이디어, 상세 설명을 입력해 주세요.");
       return;
     }
 
-    setIsLoading(true);
-    onStreamBegin?.();
-
-    try {
-      const response = await postArticleStream(
-        {
-          selectedTemplate,
-          blogTitleValue,
-          blogDescriptionValue,
-          keywords,
-        },
-        {
-          onDelta: (preview) => {
-            onStreamDelta?.(preview);
-          },
-        }
-      );
-      onStreamComplete?.();
-      setGeneratedArticle(response);
-    } catch (e) {
-      onStreamComplete?.();
-      toast.error("AI 글 생성 중 오류가 발생했습니다. 다시 시도해 주세요.");
-      setIsLoading(false);
-    }
-    // 생성 성공 시에는 로딩을 유지한다. 부모가 저장 후 router.push 하거나 실패 시 끈다.
+    saveWriteGeneratingPayload({
+      selectedTemplate,
+      blogTitleValue,
+      blogDescriptionValue,
+      keywords,
+    });
+    router.push("/write/generating");
   };
 
   return (
@@ -58,7 +40,7 @@ export default function BottomCta({
               생성할 준비가 되셨나요?
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              AI가 초안을 실시간으로 작성합니다. 잠시만 기다려 주세요.
+              생성 화면으로 이동해 초안이 실시간으로 작성됩니다.
             </p>
           </div>
         </div>

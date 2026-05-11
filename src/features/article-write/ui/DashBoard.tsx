@@ -1,27 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Button from "@/shared/ui/Button";
 import { TEMPLATES } from "@/entities/template/config/Template";
 import WriteSectionHeader from "./Header/WriteSectionHeader";
 import WriteInfoToolTip from "./infoTooltip/WriteInfoToolTip";
-import LoadingComponent from "@/shared/ui/Loading";
 import { CheckCircle } from "lucide-react";
 import { NAVY, dashboardWriteStyles } from "./dashboardWriteStyles";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { useRouter } from "next/navigation";
-import { postTemplate } from "@/entities/template/api/postTemplate";
 import WriteKeyWord from "./keyword/WriteKeyWord";
 import BottomCta from "./bottom/BottomCta";
-import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
-import { getAllTemplates } from "@/entities/template/api/getTemplate";
-import { toast } from "react-toastify";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { stabilizeMarkdownForPreview } from "@/shared/lib/stabilizeMarkdownForPreview";
-import "@/features/post-view/ui/markDown.css";
 const { inputBase, sectionCard, templateCardBase } = dashboardWriteStyles;
 
 export default function DashBoardWrite() {
@@ -29,66 +17,11 @@ export default function DashBoardWrite() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("TIL");
   const [blogTitleValue, setBlogTitleValue] = useState<string>("");
   const [blogDescriptionValue, setBlogDescriptionValue] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [keywords, setKeywords] = useState<string[]>([
     "React",
     "성능 최적화",
     "프론트엔드",
   ]);
-
-  const [generatedArticle, setGeneratedArticle] =
-    useState<GeneratedArticle | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamPreview, setStreamPreview] = useState<{
-    title: string;
-    content: string;
-  }>({ title: "", content: "" });
-  const user = useAuthStore((state) => state.user);
-
-  // 생성 성공 후 Supabase에 저장하고, 저장된 id로 /post/[id] 이동
-  useEffect(() => {
-    if (!generatedArticle || !generatedArticle.content.trim() || !user) return;
-
-    const saveAndGoToPost = async () => {
-      const templates = await getAllTemplates();
-      if ((templates?.length ?? 0) >= 10) {
-        toast.error("최대 10개의 포스트만 저장할 수 있습니다.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const data = await postTemplate({
-          title: generatedArticle.title,
-          content: generatedArticle.content,
-          template_type: generatedArticle.template,
-          keywords: generatedArticle.keywords,
-        });
-
-        const row = Array.isArray(data) ? data[0] : data;
-        const id =
-          row && typeof row === "object" && "id" in row ? row.id : undefined;
-        if (id) {
-          router.push(`/post/${id}`);
-          return;
-        }
-        toast.error("저장은 되었지만 글 페이지로 이동할 수 없습니다.");
-      } catch (err) {
-        console.error(err);
-        toast.error(
-          err instanceof Error ? err.message : "저장에 실패했습니다."
-        );
-      }
-      setIsLoading(false);
-    };
-    saveAndGoToPost();
-  }, [generatedArticle, user, router]);
-
-  const showFullPageLoader = isLoading && !isStreaming;
-
-  if (showFullPageLoader) {
-    return <LoadingComponent />;
-  }
 
   const handleSampleView = () => {
     router.push("/post");
@@ -104,7 +37,7 @@ export default function DashBoardWrite() {
               블로그 콘텐츠 설정
             </h1>
             <p className="text-slate-400 text-base mt-0.5">
-              아래 세부 정보를 입력하면 AI가 기술 문서를 대신 작성해 드립니다.
+              아래 세부 정보를 입력한 뒤 생성 화면에서 AI 초안을 확인하세요.
             </p>
           </div>
 
@@ -199,72 +132,11 @@ export default function DashBoardWrite() {
           {/* 3. 핵심 키워드 */}
           <WriteKeyWord keywords={keywords} setKeywords={setKeywords} />
 
-          {isStreaming && (
-            <section
-              className={`${sectionCard} border-amber-500/30 ring-1 ring-amber-500/20`}>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
-                </span>
-                <h2 className="text-white font-bold text-lg">초안 생성 중…</h2>
-              </div>
-              {streamPreview.title ? (
-                <p className="text-amber-200/90 font-semibold text-base mb-3">
-                  {streamPreview.title}
-                </p>
-              ) : (
-                <p className="text-slate-500 text-sm mb-3">
-                  제목과 본문이 흐름에 맞게 채워집니다.
-                </p>
-              )}
-              <div className="markdown max-h-[min(28rem,50vh)] overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-950/50 p-4 prose-invert max-w-none text-sm">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ className, children, ...props }) {
-                      const match = /language-(\w+)/.exec(className || "");
-                      return match ? (
-                        <SyntaxHighlighter
-                          language={match[1]}
-                          style={lucario}
-                          customStyle={{
-                            borderRadius: "0.5rem",
-                            margin: "0.5rem 0",
-                            padding: "0.75rem",
-                            background: "#1e1e3f",
-                            fontSize: "0.75rem",
-                          }}
-                          PreTag="div">
-                          {String(children).replace(/\n$/, "")}
-                        </SyntaxHighlighter>
-                      ) : (
-                        <code className="inline-code" {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                  }}>
-                  {stabilizeMarkdownForPreview(streamPreview.content)}
-                </ReactMarkdown>
-              </div>
-            </section>
-          )}
-
-          {/* CTA */}
           <BottomCta
             selectedTemplate={selectedTemplate}
             blogTitleValue={blogTitleValue}
             blogDescriptionValue={blogDescriptionValue}
             keywords={keywords}
-            setIsLoading={setIsLoading}
-            setGeneratedArticle={setGeneratedArticle}
-            onStreamBegin={() => {
-              setIsStreaming(true);
-              setStreamPreview({ title: "", content: "" });
-            }}
-            onStreamDelta={setStreamPreview}
-            onStreamComplete={() => setIsStreaming(false)}
           />
         </section>
       </div>
