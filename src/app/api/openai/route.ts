@@ -6,6 +6,18 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
+function normalizeKeywords(result: Record<string, unknown>): string[] {
+  return Array.isArray(result.keywords)
+    ? (result.keywords as unknown[]).map(String)
+    : Array.isArray(result.hashtags)
+    ? (result.hashtags as unknown[]).map(String)
+    : [];
+}
+
+function sseEncode(obj: unknown): Uint8Array {
+  return new TextEncoder().encode(`data: ${JSON.stringify(obj)}\n\n`);
+}
+
 export async function POST(request: NextRequest) {
   try {
     let body: unknown;
@@ -18,8 +30,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const raw = body as Record<string, unknown>;
+    const wantStream = raw.stream === true;
+
     const { topicStr, description, keywords, styleKey } =
-      parseBlogGenerationBody(body as Record<string, unknown>);
+      parseBlogGenerationBody(raw);
 
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY가 설정되지 않았습니다.");
@@ -35,6 +50,73 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = getSystemPrompt(styleKey);
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
+
+    if (wantStream) {
+      const stream = new ReadableStream({
+        async start(controller) {
+          const push = (obj: unknown) => controller.enqueue(sseEncode(obj));
+          try {
+            const completionStream = await openai.chat.completions.create({
+              model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt },
+              ],
+              max_tokens: 8192,
+              stream: true,
+            });
+
+            let full = "";
+            for await (const part of completionStream) {
+              const delta = part.choices[0]?.delta?.content ?? "";
+              if (delta) {
+                full += delta;
+                push({ type: "delta", chunk: delta });
+              }
+            }
+
+            const trimmed = full.trim();
+            let result: Record<string, unknown> = {};
+            if (trimmed) {
+              try {
+                result = JSON.parse(trimmed) as Record<string, unknown>;
+              } catch {
+                result = {
+                  title: "",
+                  content: trimmed,
+                  keywords: [],
+                  metaDescription: "",
+                };
+              }
+            }
+
+            const keywordsResult = normalizeKeywords(result);
+            push({
+              type: "done",
+              title: result.title ?? "",
+              content: result.content ?? "",
+              keywords: keywordsResult,
+              metaDescription: result.metaDescription ?? "",
+            });
+          } catch (error) {
+            console.error("OpenAI stream error:", error);
+            const message =
+              error instanceof Error ? error.message : String(error);
+            push({ type: "error", message });
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || "gpt-4o-mini",
@@ -55,11 +137,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const keywordsResult = Array.isArray(result.keywords)
-      ? result.keywords
-      : Array.isArray(result.hashtags)
-      ? result.hashtags
-      : [];
+    const keywordsResult = normalizeKeywords(result);
     return NextResponse.json({
       ...result,
       keywords: keywordsResult,

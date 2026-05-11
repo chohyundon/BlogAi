@@ -30,4 +30,17 @@ if [ -f "$SCRIPTS_DIR/commit-msg" ]; then
   echo "✅ commit-msg 훅 설치됨"
 fi
 
+if [ -f "$SCRIPTS_DIR/prepare-commit-msg" ]; then
+  cp "$SCRIPTS_DIR/prepare-commit-msg" "$HOOK_DIR/prepare-commit-msg"
+  chmod +x "$HOOK_DIR/prepare-commit-msg"
+  echo "✅ prepare-commit-msg 훅 설치됨 (스테이징 diff → OpenAI 한 줄 제목)"
+fi
+
+TEMPLATE="$ROOT/scripts/git-commit-template.txt"
+if [ -f "$TEMPLATE" ]; then
+  git -C "$ROOT" config commit.template "$TEMPLATE"
+  echo "✅ git commit.template → $TEMPLATE"
+  echo "   (git commit 시 에디터에 컨벤션 안내가 열립니다)"
+fi
+
 echo "완료: $HOOK_DIR"

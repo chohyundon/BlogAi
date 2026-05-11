@@ -1,12 +1,8 @@
 import { postGemini } from "./postGemini";
 import { postOpenAi } from "./postOpenAi";
+import type { PostArticleInput } from "../model/postArticleInput";
 
-export interface PostArticleInput {
-  selectedTemplate: string;
-  blogTitleValue: string;
-  blogDescriptionValue: string;
-  keywords: string[];
-}
+export type { PostArticleInput } from "../model/postArticleInput";
 
 /** `.env`에 `NEXT_PUBLIC_AI_PROVIDER=gemini`면 Gemini, 그 외 OpenAI */
 export function postArticle(data: PostArticleInput) {
@@ -15,3 +11,6 @@ export function postArticle(data: PostArticleInput) {
   }
   return postOpenAi(data);
 }
+
+export { postArticleStream } from "./postArticleStream";
+export type { ArticleStreamDelta } from "./postArticleStream";

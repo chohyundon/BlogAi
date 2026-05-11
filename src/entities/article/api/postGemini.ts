@@ -1,11 +1,6 @@
-interface PostGeminiProps {
-  selectedTemplate: string;
-  blogTitleValue: string;
-  blogDescriptionValue: string;
-  keywords: string[];
-}
+import type { PostArticleInput } from "../model/postArticleInput";
 
-export const postGemini = async (data: PostGeminiProps) => {
+export const postGemini = async (data: PostArticleInput) => {
   const response = await fetch("/api/gemini", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
