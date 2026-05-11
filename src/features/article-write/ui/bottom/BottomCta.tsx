@@ -1,7 +1,7 @@
 import { Lightbulb } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import Button from "@/shared/ui/Button";
-import { postArticle } from "@/entities/article/api/postArticle";
+import { postArticleStream } from "@/entities/article/api/postArticleStream";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
 
 export default function BottomCta({
@@ -11,6 +11,9 @@ export default function BottomCta({
   keywords,
   setIsLoading,
   setGeneratedArticle,
+  onStreamDelta,
+  onStreamBegin,
+  onStreamComplete,
 }: BottomCtaProps) {
   const handleGenerateArticle = async () => {
     if (blogTitleValue.trim() === "" || blogDescriptionValue.trim() === "") {
@@ -19,30 +22,26 @@ export default function BottomCta({
     }
 
     setIsLoading(true);
+    onStreamBegin?.();
 
     try {
-      const response = await postArticle({
-        selectedTemplate,
-        blogTitleValue,
-        blogDescriptionValue,
-        keywords,
-      });
-      const keywordsArray =
-        typeof response.keywords === "string"
-          ? response.keywords
-              .split(",")
-              .map((k: string) => k.trim())
-              .filter(Boolean)
-          : Array.isArray(response.keywords)
-          ? response.keywords
-          : [];
-      setGeneratedArticle({
-        title: response.title ?? "",
-        content: response.content ?? "",
-        keywords: keywordsArray,
-        template: selectedTemplate,
-      });
+      const response = await postArticleStream(
+        {
+          selectedTemplate,
+          blogTitleValue,
+          blogDescriptionValue,
+          keywords,
+        },
+        {
+          onDelta: (preview) => {
+            onStreamDelta?.(preview);
+          },
+        }
+      );
+      onStreamComplete?.();
+      setGeneratedArticle(response);
     } catch (e) {
+      onStreamComplete?.();
       toast.error("AI 글 생성 중 오류가 발생했습니다. 다시 시도해 주세요.");
       setIsLoading(false);
     }
@@ -59,7 +58,7 @@ export default function BottomCta({
               생성할 준비가 되셨나요?
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              AI가 몇 초 안에 초안을 작성해 드립니다.
+              AI가 초안을 실시간으로 작성합니다. 잠시만 기다려 주세요.
             </p>
           </div>
         </div>

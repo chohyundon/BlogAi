@@ -13,9 +13,15 @@ import { useRouter } from "next/navigation";
 import { postTemplate } from "@/entities/template/api/postTemplate";
 import WriteKeyWord from "./keyword/WriteKeyWord";
 import BottomCta from "./bottom/BottomCta";
-import { GeneratedArticle } from "@/features/article-write/model/BottomCtaType";
+import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import { getAllTemplates } from "@/entities/template/api/getTemplate";
 import { toast } from "react-toastify";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import SyntaxHighlighter from "react-syntax-highlighter";
+import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { stabilizeMarkdownForPreview } from "@/shared/lib/stabilizeMarkdownForPreview";
+import "@/features/post-view/ui/markDown.css";
 const { inputBase, sectionCard, templateCardBase } = dashboardWriteStyles;
 
 export default function DashBoardWrite() {
@@ -32,6 +38,11 @@ export default function DashBoardWrite() {
 
   const [generatedArticle, setGeneratedArticle] =
     useState<GeneratedArticle | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamPreview, setStreamPreview] = useState<{
+    title: string;
+    content: string;
+  }>({ title: "", content: "" });
   const user = useAuthStore((state) => state.user);
 
   // 생성 성공 후 Supabase에 저장하고, 저장된 id로 /post/[id] 이동
@@ -73,7 +84,9 @@ export default function DashBoardWrite() {
     saveAndGoToPost();
   }, [generatedArticle, user, router]);
 
-  if (isLoading) {
+  const showFullPageLoader = isLoading && !isStreaming;
+
+  if (showFullPageLoader) {
     return <LoadingComponent />;
   }
 
@@ -186,6 +199,58 @@ export default function DashBoardWrite() {
           {/* 3. 핵심 키워드 */}
           <WriteKeyWord keywords={keywords} setKeywords={setKeywords} />
 
+          {isStreaming && (
+            <section
+              className={`${sectionCard} border-amber-500/30 ring-1 ring-amber-500/20`}>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                </span>
+                <h2 className="text-white font-bold text-lg">초안 생성 중…</h2>
+              </div>
+              {streamPreview.title ? (
+                <p className="text-amber-200/90 font-semibold text-base mb-3">
+                  {streamPreview.title}
+                </p>
+              ) : (
+                <p className="text-slate-500 text-sm mb-3">
+                  제목과 본문이 흐름에 맞게 채워집니다.
+                </p>
+              )}
+              <div className="markdown max-h-[min(28rem,50vh)] overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-950/50 p-4 prose-invert max-w-none text-sm">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || "");
+                      return match ? (
+                        <SyntaxHighlighter
+                          language={match[1]}
+                          style={lucario}
+                          customStyle={{
+                            borderRadius: "0.5rem",
+                            margin: "0.5rem 0",
+                            padding: "0.75rem",
+                            background: "#1e1e3f",
+                            fontSize: "0.75rem",
+                          }}
+                          PreTag="div">
+                          {String(children).replace(/\n$/, "")}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className="inline-code" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                  }}>
+                  {stabilizeMarkdownForPreview(streamPreview.content)}
+                </ReactMarkdown>
+              </div>
+            </section>
+          )}
+
           {/* CTA */}
           <BottomCta
             selectedTemplate={selectedTemplate}
@@ -194,6 +259,12 @@ export default function DashBoardWrite() {
             keywords={keywords}
             setIsLoading={setIsLoading}
             setGeneratedArticle={setGeneratedArticle}
+            onStreamBegin={() => {
+              setIsStreaming(true);
+              setStreamPreview({ title: "", content: "" });
+            }}
+            onStreamDelta={setStreamPreview}
+            onStreamComplete={() => setIsStreaming(false)}
           />
         </section>
       </div>

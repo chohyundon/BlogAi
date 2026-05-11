@@ -1,11 +1,6 @@
-interface PostOpenAiProps {
-  selectedTemplate: string;
-  blogTitleValue: string;
-  blogDescriptionValue: string;
-  keywords: string[];
-}
+import type { PostArticleInput } from "../model/postArticleInput";
 
-export const postOpenAi = async (data: PostOpenAiProps) => {
+export const postOpenAi = async (data: PostArticleInput) => {
   const response = await fetch("/api/openai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
