@@ -195,8 +195,8 @@ export default function GeneratingDraft() {
         </h1>
         <p className="text-slate-400 text-sm mb-8">
           AI가 글을 이 페이지에서 실시간으로 작성합니다. 완료되면 자동으로
-          포스트 화면으로 이동합니다. 저장은 계정당 최대{" "}
-          {MAX_STORED_POSTS}개까지이며, 생성 시작 전에 한 번 더 확인합니다.
+          포스트 화면으로 이동합니다. 저장은 계정당 최대 {MAX_STORED_POSTS}
+          개까지이며, 생성 시작 전에 한 번 더 확인합니다.
         </p>
 
         <section
