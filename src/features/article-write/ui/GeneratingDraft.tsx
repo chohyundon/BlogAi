@@ -22,10 +22,12 @@ import {
 import { stabilizeMarkdownForPreview } from "@/shared/lib/stabilizeMarkdownForPreview";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { postTemplate } from "@/entities/template/api/postTemplate";
-import { getAllTemplates } from "@/entities/template/api/getTemplate";
+import {
+  ensureUnderStoredPostLimit,
+} from "@/entities/template/api/getTemplate";
 import {
   MAX_STORED_POSTS,
-  isAtStoredPostLimit,
+  StoredPostLimitError,
 } from "@/entities/template/model/postLimit";
 import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
@@ -60,16 +62,6 @@ export default function GeneratingDraft() {
 
     (async () => {
       try {
-        const templates = await getAllTemplates();
-        if (isAtStoredPostLimit(templates?.length ?? 0)) {
-          toast.error(
-            `최대 ${MAX_STORED_POSTS}개의 포스트만 저장할 수 있습니다. 기존 글을 정리한 뒤 다시 시도해 주세요.`
-          );
-          clearWriteGeneratingPayload();
-          router.replace("/write");
-          return;
-        }
-
         const article = await postArticleStream(
           {
             selectedTemplate: payload.selectedTemplate,
@@ -90,6 +82,12 @@ export default function GeneratingDraft() {
       } catch (e) {
         if (cancelled) return;
         if (e instanceof DOMException && e.name === "AbortError") return;
+        if (e instanceof StoredPostLimitError) {
+          toast.error(e.message);
+          clearWriteGeneratingPayload();
+          router.replace("/write");
+          return;
+        }
         clearWriteGeneratingPayload();
         toast.error("AI 글 생성 중 오류가 발생했습니다.");
         setPhase("error");
@@ -112,11 +110,15 @@ export default function GeneratingDraft() {
 
     const saveAndGo = async () => {
       setPhase("saving");
-      const templates = await getAllTemplates();
-      if (isAtStoredPostLimit(templates?.length ?? 0)) {
-        toast.error(
-          `최대 ${MAX_STORED_POSTS}개의 포스트만 저장할 수 있습니다.`
-        );
+      try {
+        await ensureUnderStoredPostLimit();
+      } catch (e) {
+        if (e instanceof StoredPostLimitError) {
+          toast.error(e.message);
+          setPhase("error");
+          return;
+        }
+        toast.error("저장 전 포스트 개수를 확인하지 못했습니다.");
         setPhase("error");
         return;
       }

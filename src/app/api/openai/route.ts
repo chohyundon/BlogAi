@@ -3,6 +3,7 @@ import {
   getSystemPrompt,
   parseBlogGenerationBody,
 } from "@/shared/lib/blogGenerationPrompt";
+import { gateStoredPostLimitForAi } from "@/entities/template/api/gateStoredPostLimitForAi";
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
@@ -35,6 +36,14 @@ export async function POST(request: NextRequest) {
 
     const { topicStr, description, keywords, styleKey } =
       parseBlogGenerationBody(raw);
+
+    const limitGate = await gateStoredPostLimitForAi();
+    if (!limitGate.ok) {
+      return NextResponse.json(
+        { error: limitGate.error },
+        { status: limitGate.status }
+      );
+    }
 
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY가 설정되지 않았습니다.");

@@ -1,4 +1,6 @@
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
+import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
+import { StoredPostLimitError } from "@/entities/template/model/postLimit";
 import { extractPartialJsonStringValue } from "@/shared/lib/extractPartialJsonStringValue";
 import type { PostArticleInput } from "../model/postArticleInput";
 
@@ -29,6 +31,8 @@ export async function postArticleStream(
   data: PostArticleInput,
   options: PostArticleStreamOptions
 ): Promise<GeneratedArticle> {
+  await ensureUnderStoredPostLimit();
+
   const res = await fetch(streamEndpoint(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -44,6 +48,9 @@ export async function postArticleStream(
         error?: string;
         details?: string;
       };
+      if (res.status === 403) {
+        throw new StoredPostLimitError(json.error);
+      }
       const err = new Error(json.error ?? "요청 실패") as Error & {
         status: number;
         details?: string;

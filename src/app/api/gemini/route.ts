@@ -3,6 +3,7 @@ import {
   getSystemPrompt,
   parseBlogGenerationBody,
 } from "@/shared/lib/blogGenerationPrompt";
+import { gateStoredPostLimitForAi } from "@/entities/template/api/gateStoredPostLimitForAi";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -35,6 +36,14 @@ export async function POST(request: NextRequest) {
 
     const { topicStr, description, keywords, styleKey } =
       parseBlogGenerationBody(raw);
+
+    const limitGate = await gateStoredPostLimitForAi();
+    if (!limitGate.ok) {
+      return NextResponse.json(
+        { error: limitGate.error },
+        { status: limitGate.status }
+      );
+    }
 
     const apiKey = process.env.GEMINI_API_KEY ?? process.env.GEMINI_APT_KEY;
     if (!apiKey) {

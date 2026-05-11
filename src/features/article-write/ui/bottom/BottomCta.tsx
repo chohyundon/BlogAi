@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
 import { saveWriteGeneratingPayload } from "@/features/article-write/lib/writeGeneratingSession";
-import { getAllTemplates } from "@/entities/template/api/getTemplate";
+import {
+  ensureUnderStoredPostLimit,
+} from "@/entities/template/api/getTemplate";
 import {
   MAX_STORED_POSTS,
-  isAtStoredPostLimit,
+  StoredPostLimitError,
 } from "@/entities/template/model/postLimit";
 
 export default function BottomCta({
@@ -27,15 +29,15 @@ export default function BottomCta({
     }
 
     try {
-      const templates = await getAllTemplates();
-      if (isAtStoredPostLimit(templates?.length ?? 0)) {
-        toast.error(
-          `최대 ${MAX_STORED_POSTS}개의 포스트만 저장할 수 있습니다. 기존 글을 정리한 뒤 다시 시도해 주세요.`
-        );
+      await ensureUnderStoredPostLimit();
+    } catch (e) {
+      if (e instanceof StoredPostLimitError) {
+        toast.error(e.message);
         return;
       }
-    } catch {
-      toast.error("저장 가능한 포스트 개수를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      toast.error(
+        "저장 가능한 포스트 개수를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."
+      );
       return;
     }
 
