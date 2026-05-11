@@ -64,9 +64,9 @@ export default function MypageScreen() {
   };
 
   const handleConfirmDelete = async (id: string) => {
-    const error = await deleteTemplate(id);
+    const { error } = await deleteTemplate(id);
     if (error) {
-      console.error(error);
+      toast.error(error);
     } else {
       setTemplates((prev) => prev.filter((t) => t.id !== id));
       toast.success("포스트가 삭제되었습니다.");
