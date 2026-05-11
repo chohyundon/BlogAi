@@ -23,6 +23,10 @@ import { stabilizeMarkdownForPreview } from "@/shared/lib/stabilizeMarkdownForPr
 import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { postTemplate } from "@/entities/template/api/postTemplate";
 import { getAllTemplates } from "@/entities/template/api/getTemplate";
+import {
+  MAX_STORED_POSTS,
+  isAtStoredPostLimit,
+} from "@/entities/template/model/postLimit";
 import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
 import "@/features/post-view/ui/markDown.css";
@@ -56,6 +60,16 @@ export default function GeneratingDraft() {
 
     (async () => {
       try {
+        const templates = await getAllTemplates();
+        if (isAtStoredPostLimit(templates?.length ?? 0)) {
+          toast.error(
+            `최대 ${MAX_STORED_POSTS}개의 포스트만 저장할 수 있습니다. 기존 글을 정리한 뒤 다시 시도해 주세요.`
+          );
+          clearWriteGeneratingPayload();
+          router.replace("/write");
+          return;
+        }
+
         const article = await postArticleStream(
           {
             selectedTemplate: payload.selectedTemplate,
@@ -99,8 +113,10 @@ export default function GeneratingDraft() {
     const saveAndGo = async () => {
       setPhase("saving");
       const templates = await getAllTemplates();
-      if ((templates?.length ?? 0) >= 10) {
-        toast.error("최대 10개의 포스트만 저장할 수 있습니다.");
+      if (isAtStoredPostLimit(templates?.length ?? 0)) {
+        toast.error(
+          `최대 ${MAX_STORED_POSTS}개의 포스트만 저장할 수 있습니다.`
+        );
         setPhase("error");
         return;
       }
@@ -179,7 +195,8 @@ export default function GeneratingDraft() {
         </h1>
         <p className="text-slate-400 text-sm mb-8">
           AI가 글을 이 페이지에서 실시간으로 작성합니다. 완료되면 자동으로
-          포스트 화면으로 이동합니다.
+          포스트 화면으로 이동합니다. 저장은 계정당 최대{" "}
+          {MAX_STORED_POSTS}개까지이며, 생성 시작 전에 한 번 더 확인합니다.
         </p>
 
         <section
