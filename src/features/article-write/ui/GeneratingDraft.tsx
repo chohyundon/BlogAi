@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ArrowLeft } from "lucide-react";
-import { postArticleStream } from "@/entities/article/api/postArticleStream";
+import { postArticle } from "@/entities/article/api/postArticle";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import {
   peekWriteGeneratingPayload,
@@ -19,7 +19,6 @@ import {
   NAVY,
   dashboardWriteStyles,
 } from "@/features/article-write/ui/dashboardWriteStyles";
-import { stabilizeMarkdownForPreview } from "@/shared/lib/stabilizeMarkdownForPreview";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { postTemplate } from "@/entities/template/api/postTemplate";
 import {
@@ -29,234 +28,216 @@ import {
   MAX_STORED_POSTS,
   StoredPostLimitError,
 } from "@/entities/template/model/postLimit";
-import Button from "@/shared/ui/Button";
-import LoadingComponent from "@/shared/ui/Loading";
 import "@/features/post-view/ui/markDown.css";
-
-const { sectionCard } = dashboardWriteStyles;
 
 export default function GeneratingDraft() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const [streamPreview, setStreamPreview] = useState({
-    title: "",
-    content: "",
-  });
-  const [phase, setPhase] = useState<"streaming" | "saving" | "error">(
-    "streaming"
-  );
-  const [generatedArticle, setGeneratedArticle] =
-    useState<GeneratedArticle | null>(null);
+  const user = useAuthStore((state) => state.user);
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<GeneratedArticle | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) {
+      router.push("/write");
+      return;
+    }
+
     const payload = peekWriteGeneratingPayload();
     if (!payload) {
-      toast.warning("작성 정보가 없습니다. 다시 입력해 주세요.");
-      router.replace("/write");
+      router.push("/write");
       return;
     }
 
-    const ac = new AbortController();
-    let cancelled = false;
-    setPhase("streaming");
-
-    (async () => {
+    const generate = async () => {
       try {
-        const article = await postArticleStream(
-          {
-            selectedTemplate: payload.selectedTemplate,
-            blogTitleValue: payload.blogTitleValue,
-            blogDescriptionValue: payload.blogDescriptionValue,
-            keywords: payload.keywords,
-          },
-          {
-            signal: ac.signal,
-            onDelta: (preview) => {
-              if (!cancelled) setStreamPreview(preview);
-            },
-          }
-        );
-        if (cancelled) return;
-        clearWriteGeneratingPayload();
-        setGeneratedArticle(article);
-      } catch (e) {
-        if (cancelled) return;
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        if (e instanceof StoredPostLimitError) {
-          toast.error(e.message);
-          clearWriteGeneratingPayload();
-          router.replace("/write");
-          return;
-        }
-        clearWriteGeneratingPayload();
-        toast.error("AI 글 생성 중 오류가 발생했습니다.");
-        setPhase("error");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      ac.abort();
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (!generatedArticle || !generatedArticle.content.trim()) return;
-    if (!user) {
-      toast.error("저장하려면 로그인이 필요합니다.");
-      setPhase("error");
-      return;
-    }
-
-    const saveAndGo = async () => {
-      setPhase("saving");
-      try {
-        await ensureUnderStoredPostLimit();
-      } catch (e) {
-        if (e instanceof StoredPostLimitError) {
-          toast.error(e.message);
-          setPhase("error");
-          return;
-        }
-        toast.error("저장 전 포스트 개수를 확인하지 못했습니다.");
-        setPhase("error");
-        return;
-      }
-
-      try {
-        const data = await postTemplate({
-          title: generatedArticle.title,
-          content: generatedArticle.content,
-          template_type: generatedArticle.template,
-          keywords: generatedArticle.keywords,
-        });
-        const row = Array.isArray(data) ? data[0] : data;
-        const id =
-          row && typeof row === "object" && "id" in row ? row.id : undefined;
-        if (id) {
-          router.replace(`/post/${id}`);
-          return;
-        }
-        toast.error("저장은 되었지만 글 페이지로 이동할 수 없습니다.");
-        setPhase("error");
+        setIsLoading(true);
+        setError(null);
+        
+        const generated = await postArticle(payload);
+        setResult(generated);
       } catch (err) {
-        console.error(err);
+        console.error("Generation error:", err);
+        if (err instanceof StoredPostLimitError) {
+          setError(
+            `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
+          );
+        } else {
+          setError(
+            err instanceof Error ? err.message : "글 생성에 실패했습니다."
+          );
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generate();
+  }, [user?.id, router]);
+
+  const handleSave = async () => {
+    if (!result) return;
+
+    const payload = peekWriteGeneratingPayload();
+    if (!payload) return;
+
+    try {
+      await ensureUnderStoredPostLimit();
+      await postTemplate({
+        title: result.title,
+        content: result.content,
+        keywords: result.keywords,
+        template_type: payload.selectedTemplate,
+      });
+      clearWriteGeneratingPayload();
+      toast.success("글이 성공적으로 저장되었습니다!");
+      
+      setTimeout(() => {
+        router.push("/mypage");
+      }, 1000);
+    } catch (err) {
+      console.error("Save error:", err);
+      if (err instanceof StoredPostLimitError) {
+        toast.error(
+          `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
+        );
+      } else {
         toast.error(
           err instanceof Error ? err.message : "저장에 실패했습니다."
         );
-        setPhase("error");
       }
-    };
-    saveAndGo();
-  }, [generatedArticle, user, router]);
+    }
+  };
 
-  if (phase === "saving") {
-    return <LoadingComponent />;
-  }
-
-  if (phase === "error") {
-    return (
-      <main
-        className={`w-full min-h-full flex flex-col items-center justify-center px-6 py-16 ${NAVY.bg}`}>
-        <div className="max-w-md text-center space-y-6">
-          <p className="text-slate-300">
-            생성 또는 저장 중 문제가 생겼습니다. 작성 화면에서 다시 시도해
-            주세요.
-          </p>
-          <Button
-            className="font-bold bg-amber-500 hover:bg-amber-600 text-white"
-            onClick={() => router.push("/write")}>
-            작성 화면으로
-          </Button>
-        </div>
-        <ToastContainer
-          position="top-right"
-          autoClose={2500}
-          hideProgressBar
-          theme="dark"
-        />
-      </main>
-    );
-  }
+  const handleRegenerate = () => {
+    router.push("/write");
+  };
 
   return (
-    <main
-      className={`w-full min-h-full flex flex-col overflow-y-auto ${NAVY.bg}`}>
-      <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 pb-20">
-        <div className="mb-8">
-          <Link
-            href="/write"
-            className="inline-flex items-center gap-2 text-slate-400 hover:text-amber-400 text-sm font-medium transition-colors">
-            <ArrowLeft className="size-4" />
-            작성 설정으로 돌아가기
-          </Link>
-        </div>
-
-        <h1 className="text-white text-3xl font-black tracking-tight mb-2">
-          초안 생성 중
-        </h1>
-        <p className="text-slate-400 text-sm mb-8">
-          AI가 글을 이 페이지에서 실시간으로 작성합니다. 완료되면 자동으로
-          포스트 화면으로 이동합니다. 저장은 계정당 최대 {MAX_STORED_POSTS}
-          개까지이며, 생성 시작 전에 한 번 더 확인합니다.
-        </p>
-
-        <section
-          className={`${sectionCard} border-amber-500/30 ring-1 ring-amber-500/20`}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
-            </span>
-            <h2 className="text-white font-bold text-lg">스트리밍 미리보기</h2>
-          </div>
-          {streamPreview.title ? (
-            <p className="text-amber-200/90 font-semibold text-base mb-3">
-              {streamPreview.title}
-            </p>
-          ) : (
-            <p className="text-slate-500 text-sm mb-3">
-              제목과 본문이 순서대로 채워집니다.
-            </p>
-          )}
-          <div className="markdown min-h-48 max-h-[min(40rem,60vh)] overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-950/50 p-4 prose-invert max-w-none text-sm">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || "");
-                  return match ? (
-                    <SyntaxHighlighter
-                      language={match[1]}
-                      style={lucario}
-                      customStyle={{
-                        borderRadius: "0.5rem",
-                        margin: "0.5rem 0",
-                        padding: "0.75rem",
-                        background: "#1e1e3f",
-                        fontSize: "0.75rem",
-                      }}
-                      PreTag="div">
-                      {String(children).replace(/\n$/, "")}
-                    </SyntaxHighlighter>
-                  ) : (
-                    <code className="inline-code" {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-              }}>
-              {stabilizeMarkdownForPreview(streamPreview.content)}
-            </ReactMarkdown>
-          </div>
-        </section>
-      </div>
+    <div className={`${dashboardWriteStyles} ${NAVY}`}>
       <ToastContainer
         position="top-right"
-        autoClose={2500}
-        hideProgressBar
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
         theme="dark"
       />
-    </main>
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="px-8 py-6 border-b border-navy-700 flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/write"
+              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft size={20} />
+              <span>뒤로 가기</span>
+            </Link>
+            <div className="h-6 w-px bg-slate-600"></div>
+            <h1 className="text-xl font-semibold text-white">AI 블로그 생성</h1>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-hidden">
+          {isLoading && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-4"></div>
+                <p className="text-white text-lg">AI가 블로그 글을 생성하고 있습니다...</p>
+                <p className="text-slate-400 text-sm mt-2">잠시만 기다려주세요.</p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center max-w-md">
+                <div className="text-red-400 text-lg mb-4">생성 실패</div>
+                <p className="text-slate-300 mb-6">{error}</p>
+                <button
+                  onClick={handleRegenerate}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+                >
+                  다시 시도
+                </button>
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="h-full flex">
+              <div className="flex-1 p-8 overflow-y-auto">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-navy-800 rounded-lg border border-navy-700 p-6">
+                    <h2 className="text-2xl font-bold text-white mb-4">
+                      {result.title}
+                    </h2>
+                    <div className="prose prose-invert max-w-none">
+                      <div className="markdown">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code({ className, children }) {
+                              const match = /language-(\w+)/.exec(className || "");
+                              return match ? (
+                                <SyntaxHighlighter
+                                  style={lucario as any}
+                                  language={match[1]}
+                                  PreTag="div"
+                                >
+                                  {String(children).replace(/\n$/, "")}
+                                </SyntaxHighlighter>
+                              ) : (
+                                <code className={className}>
+                                  {children}
+                                </code>
+                              );
+                            },
+                          }}
+                        >
+                          {result.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {result.keywords.map((keyword, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm"
+                        >
+                          #{keyword}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="w-80 border-l border-navy-700 p-6 flex flex-col">
+                <h3 className="text-lg font-semibold text-white mb-4">작업</h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSave}
+                    className="w-full px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium"
+                  >
+                    저장하기
+                  </button>
+                  <button
+                    onClick={handleRegenerate}
+                    className="w-full px-4 py-3 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                  >
+                    다시 생성
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }

@@ -1,16 +1,29 @@
-import { postGemini } from "./postGemini";
-import { postOpenAi } from "./postOpenAi";
+import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
+import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
 import type { PostArticleInput } from "../model/postArticleInput";
 
-export type { PostArticleInput } from "../model/postArticleInput";
-
-/** `.env`에 `NEXT_PUBLIC_AI_PROVIDER=gemini`면 Gemini, 그 외 OpenAI */
-export function postArticle(data: PostArticleInput) {
+function endpoint(): "/api/openai" | "/api/gemini" {
   if (process.env.NEXT_PUBLIC_AI_PROVIDER === "gemini") {
-    return postGemini(data);
+    return "/api/gemini";
   }
-  return postOpenAi(data);
+  return "/api/openai";
 }
 
-export { postArticleStream } from "./postArticleStream";
-export type { ArticleStreamDelta } from "./postArticleStream";
+export async function postArticle(
+  data: PostArticleInput
+): Promise<GeneratedArticle> {
+  await ensureUnderStoredPostLimit();
+
+  const res = await fetch(endpoint(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const json = (await res.json()) as { error?: string };
+    throw new Error(json.error ?? `HTTP ${res.status}`);
+  }
+
+  return (await res.json()) as GeneratedArticle;
+}
