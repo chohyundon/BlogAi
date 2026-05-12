@@ -1,0 +1,112 @@
+# PR을 연 직후 제목·본문이 비어 있거나(또는 기본 제목만 있으면) 자동으로 채운다.
+# - 본문: HEAD의 .github/pull_request_template.md
+# - 제목: PR의 첫 커밋(타임순) 메시지 첫 줄, 커밋 규칙의 | 작성자 | 시각 접미사 제거 후 [self] 접두
+#
+# 주의: 이 워크플로 파일은 기본 브랜치에 머지된 뒤부터 pull_request 이벤트에 실행된다.
+
+name: PR auto-fill
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  auto-fill:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const pr = context.payload.pull_request;
+            const branch = pr.head.ref;
+            const title = (pr.title ?? '').trim();
+            const body = pr.body ?? '';
+
+            function slug(s) {
+              return String(s)
+                .toLowerCase()
+                .replace(/[/\s_]+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            }
+
+            /** GitHub 기본/대충 입력으로 보이는 제목만 교체 */
+            const looksLikeDefaultTitle =
+              title.length === 0 ||
+              slug(title) === slug(branch);
+
+            const hasSelfTitle = /^\[self\]\s/i.test(title);
+
+            let newTitle = null;
+            if (!hasSelfTitle && looksLikeDefaultTitle) {
+              const { data: commits } = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+              if (commits.length > 0) {
+                let oldest = commits[0];
+                for (const c of commits) {
+                  const a = new Date(c.commit.committer.date).getTime();
+                  const b = new Date(oldest.commit.committer.date).getTime();
+                  if (a < b) oldest = c;
+                }
+                const firstLine = oldest.commit.message.split('\n')[0];
+                let cleaned = firstLine
+                  .replace(/\s*\|\s*[^|]+\s*\|\s*[^|]+\s*$/, '')
+                  .trim();
+                if (cleaned) {
+                  if (!/^\[self\]\s/i.test(cleaned)) {
+                    cleaned = `[self] ${cleaned}`;
+                  }
+                  newTitle = cleaned;
+                }
+              }
+            }
+
+            const bodyTrim = body.trim();
+            const isBodyEmpty =
+              bodyTrim.length === 0 ||
+              /^add your description here/i.test(bodyTrim);
+
+            let newBody = null;
+            if (isBodyEmpty) {
+              const tplPath = path.join(
+                process.env.GITHUB_WORKSPACE,
+                '.github',
+                'pull_request_template.md',
+              );
+              if (fs.existsSync(tplPath)) {
+                newBody = fs.readFileSync(tplPath, 'utf8');
+              }
+            }
+
+            if (!newTitle && !newBody) {
+              core.info('PR auto-fill: no title/body updates needed');
+              return;
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              ...(newTitle ? { title: newTitle } : {}),
+              ...(newBody ? { body: newBody } : {}),
+            });
+
+            core.info(
+              `PR auto-fill: updated title=${Boolean(newTitle)} body=${Boolean(newBody)}`,
+            );
