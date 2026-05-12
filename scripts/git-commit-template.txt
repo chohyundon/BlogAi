@@ -6,7 +6,7 @@
 # 타입  : feat fix docs style refactor test chore perf hotfix
 # 규칙  : subject 50자 이내, 끝 마침표 없이
 # 훅    : commit-msg 훅이 첫 줄 끝에 " | GitHub ID | HH:MM " 자동 추가
-# PR    : 제목의 [self] 접두는 커밋이 아니라 PR 전용 (@pr_agents.md)
+# PR    : 제목의 [self] 접두는 커밋이 아니라 PR 전용 (.github/pull_request_template.md)
 
 chore: 커밋 제목을 이 줄에서 수정하세요
 
