@@ -1,4 +1,11 @@
 import {
+  isAiClientErrorMessage,
+  normalizeKeywords,
+  parseModelJsonOutput,
+  publicAiErrorMessage,
+  sseEncode,
+} from "@/shared/lib/aiRouteCommon";
+import {
   buildUserPrompt,
   getSystemPrompt,
   parseBlogGenerationBody,
@@ -7,17 +14,7 @@ import { gateStoredPostLimitForAi } from "@/entities/template/api/gateStoredPost
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
-function normalizeKeywords(result: Record<string, unknown>): string[] {
-  return Array.isArray(result.keywords)
-    ? (result.keywords as unknown[]).map(String)
-    : Array.isArray(result.hashtags)
-    ? (result.hashtags as unknown[]).map(String)
-    : [];
-}
-
-function sseEncode(obj: unknown): Uint8Array {
-  return new TextEncoder().encode(`data: ${JSON.stringify(obj)}\n\n`);
-}
+const isDev = process.env.NODE_ENV === "development";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +24,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: "요청 본문이 올바른 JSON이 아닙니다." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -41,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (!limitGate.ok) {
       return NextResponse.json(
         { error: limitGate.error },
-        { status: limitGate.status }
+        { status: limitGate.status },
       );
     }
 
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
       console.error("GEMINI_API_KEY가 설정되지 않았습니다.");
       return NextResponse.json(
         { error: "서버 설정 오류입니다." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -82,20 +79,7 @@ export async function POST(request: NextRequest) {
             }
 
             const trimmed = full.trim();
-            let result: Record<string, unknown> = {};
-            if (trimmed) {
-              try {
-                result = JSON.parse(trimmed) as Record<string, unknown>;
-              } catch {
-                result = {
-                  title: "",
-                  content: trimmed,
-                  keywords: [],
-                  metaDescription: "",
-                };
-              }
-            }
-
+            const result = parseModelJsonOutput(trimmed);
             const keywordsResult = normalizeKeywords(result);
             push({
               type: "done",
@@ -106,9 +90,7 @@ export async function POST(request: NextRequest) {
             });
           } catch (error) {
             console.error("Gemini stream error:", error);
-            const message =
-              error instanceof Error ? error.message : String(error);
-            push({ type: "error", message });
+            push({ type: "error", message: publicAiErrorMessage(error) });
           } finally {
             controller.close();
           }
@@ -135,15 +117,7 @@ export async function POST(request: NextRequest) {
 
     const completion = await model.generateContent(userPrompt);
     const content = completion.response.text()?.trim();
-    let result: Record<string, unknown> = {};
-    if (content) {
-      try {
-        result = JSON.parse(content) as Record<string, unknown>;
-      } catch {
-        result = { title: "", content, keywords: [], metaDescription: "" };
-      }
-    }
-
+    const result = parseModelJsonOutput(content ?? "");
     const keywordsResult = normalizeKeywords(result);
     return NextResponse.json({
       ...result,
@@ -151,12 +125,15 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Gemini API Error:", error);
-    const message = error instanceof Error ? error.message : String(error);
-    const status =
-      message.includes("400") || message.includes("Invalid") ? 400 : 500;
+    const message =
+      error instanceof Error ? error.message : String(error);
+    const status = isAiClientErrorMessage(message) ? 400 : 500;
     return NextResponse.json(
-      { error: "글 생성에 실패했습니다.", details: message },
-      { status }
+      {
+        error: "글 생성에 실패했습니다.",
+        ...(isDev ? { details: message } : {}),
+      },
+      { status },
     );
   }
 }
