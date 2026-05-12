@@ -1,0 +1,16 @@
+# 이 파일은 `bash scripts/install-hooks.sh` 실행 시
+# `git config commit.template` 으로 연결됩니다.
+#
+# 형식  : <type>(<scope>): <subject>
+# scope : 생략 가능 (예: docs: README 수정)
+# 타입  : feat fix docs style refactor test chore perf hotfix
+# 규칙  : subject 50자 이내, 끝 마침표 없이
+# 훅    : commit-msg 훅이 첫 줄 끝에 " | GitHub ID | HH:MM " 자동 추가
+# PR    : 제목의 [self] 접두는 커밋이 아니라 PR 전용 (@pr_agents.md)
+
+chore: 커밋 제목을 이 줄에서 수정하세요
+
+# --- 본문(선택) ---
+# 위 제목 다음에 빈 줄을 하나 넣은 뒤, 필요하면 상세 설명을 이어서 작성합니다.
+# 이 블록은 # 으로 시작하므로 커밋 본문에는 포함되지 않습니다.
+# 본문을 쓰려면 # 를 지우고 일반 줄로 적으세요.
