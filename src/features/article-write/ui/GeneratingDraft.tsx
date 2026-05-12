@@ -145,84 +145,94 @@ export default function GeneratingDraft() {
         
         return (
           <div className="h-full flex">
-            {/* 메인 콘텐츠 영역 */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="max-w-4xl mx-auto p-8">
-                <div className={`${sectionCard} bg-navy-800 border-navy-700`}>
-                  <header className="mb-6">
-                    <h1 className="text-3xl font-bold text-white mb-2">
-                      {generatedArticle.title}
-                    </h1>
-                    <div className="flex flex-wrap gap-2">
-                      {generatedArticle.keywords.map((keyword, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm"
+            {/* 메인 콘텐츠 영역 - 스크롤 가능 */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="min-h-full">
+                <div className="max-w-4xl mx-auto p-8">
+                  <div className={`${sectionCard} bg-navy-800 border-navy-700`}>
+                    <header className="mb-6">
+                      <h1 className="text-3xl font-bold text-white mb-2">
+                        {generatedArticle.title}
+                      </h1>
+                      <div className="flex flex-wrap gap-2">
+                        {generatedArticle.keywords.map((keyword, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm"
+                          >
+                            #{keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </header>
+                    
+                    <div className="prose prose-invert max-w-none">
+                      <div className="markdown">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code({ className, children }) {
+                              const match = /language-(\w+)/.exec(className || "");
+                              return match ? (
+                                <SyntaxHighlighter
+                                  style={lucario as any}
+                                  language={match[1]}
+                                  PreTag="div"
+                                >
+                                  {String(children).replace(/\n$/, "")}
+                                </SyntaxHighlighter>
+                              ) : (
+                                <code className={className}>
+                                  {children}
+                                </code>
+                              );
+                            },
+                          }}
                         >
-                          #{keyword}
-                        </span>
-                      ))}
-                    </div>
-                  </header>
-                  
-                  <div className="prose prose-invert max-w-none">
-                    <div className="markdown">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          code({ className, children }) {
-                            const match = /language-(\w+)/.exec(className || "");
-                            return match ? (
-                              <SyntaxHighlighter
-                                style={lucario as any}
-                                language={match[1]}
-                                PreTag="div"
-                              >
-                                {String(children).replace(/\n$/, "")}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code className={className}>
-                                {children}
-                              </code>
-                            );
-                          },
-                        }}
-                      >
-                        {generatedArticle.content}
-                      </ReactMarkdown>
+                          {generatedArticle.content}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   </div>
+                  {/* 하단 여백 추가 */}
+                  <div className="h-8"></div>
                 </div>
               </div>
             </div>
 
-            {/* 사이드바 */}
-            <div className="w-80 border-l border-navy-700 p-6 flex flex-col bg-navy-900">
-              <h2 className="text-lg font-semibold text-white mb-6">작업</h2>
-              
-              <div className="space-y-4">
-                <Button
-                  onClick={handleSave}
-                  isDisabled={phase === "saving"}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {phase === "saving" ? "저장 중..." : "저장하기"}
-                </Button>
-                
-                <Button
-                  onClick={handleRegenerate}
-                  className="w-full bg-slate-600 hover:bg-slate-700"
-                >
-                  다시 생성
-                </Button>
-              </div>
+            {/* 사이드바 - 고정 */}
+            <div className="w-80 border-l border-navy-700 bg-navy-900 flex-shrink-0">
+              <div className="h-full overflow-y-auto">
+                <div className="p-6 flex flex-col min-h-full">
+                  <div className="flex-shrink-0">
+                    <h2 className="text-lg font-semibold text-white mb-6">작업</h2>
+                    
+                    <div className="space-y-4">
+                      <Button
+                        onClick={handleSave}
+                        isDisabled={phase === "saving"}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+                      >
+                        {phase === "saving" ? "저장 중..." : "저장하기"}
+                      </Button>
+                      
+                      <Button
+                        onClick={handleRegenerate}
+                        className="w-full bg-slate-600 hover:bg-slate-700"
+                      >
+                        다시 생성
+                      </Button>
+                    </div>
+                  </div>
 
-              <div className="mt-8 pt-6 border-t border-navy-600">
-                <h3 className="text-sm font-medium text-slate-300 mb-3">생성 정보</h3>
-                <div className="space-y-2 text-sm text-slate-400">
-                  <div>제목: {generatedArticle.title}</div>
-                  <div>키워드: {generatedArticle.keywords.length}개</div>
-                  <div>글자 수: 약 {generatedArticle.content.length}자</div>
+                  <div className="mt-8 pt-6 border-t border-navy-600 flex-shrink-0">
+                    <h3 className="text-sm font-medium text-slate-300 mb-3">생성 정보</h3>
+                    <div className="space-y-2 text-sm text-slate-400">
+                      <div>제목: {generatedArticle.title}</div>
+                      <div>키워드: {generatedArticle.keywords.length}개</div>
+                      <div>글자 수: 약 {generatedArticle.content.length}자</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -235,7 +245,7 @@ export default function GeneratingDraft() {
   };
 
   return (
-    <div className={`${dashboardWriteStyles} ${NAVY}`}>
+    <div className={`${dashboardWriteStyles} ${NAVY} h-screen flex flex-col`}>
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -248,27 +258,25 @@ export default function GeneratingDraft() {
         theme="dark"
       />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 헤더 */}
-        <header className="px-8 py-6 border-b border-navy-700 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/write"
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft size={20} />
-              <span>뒤로 가기</span>
-            </Link>
-            <div className="h-6 w-px bg-slate-600"></div>
-            <h1 className="text-xl font-semibold text-white">AI 블로그 생성</h1>
-          </div>
-        </header>
+      {/* 헤더 */}
+      <header className="px-8 py-6 border-b border-navy-700 flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/write"
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft size={20} />
+            <span>뒤로 가기</span>
+          </Link>
+          <div className="h-6 w-px bg-slate-600"></div>
+          <h1 className="text-xl font-semibold text-white">AI 블로그 생성</h1>
+        </div>
+      </header>
 
-        {/* 메인 콘텐츠 */}
-        <main className="flex-1 overflow-hidden">
-          {renderContent()}
-        </main>
-      </div>
+      {/* 메인 콘텐츠 */}
+      <main className="flex-1 overflow-hidden">
+        {renderContent()}
+      </main>
     </div>
   );
 }
