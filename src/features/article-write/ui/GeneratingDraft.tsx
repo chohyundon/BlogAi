@@ -79,8 +79,60 @@ export default function GeneratingDraft() {
               break;
               
             case "complete":
-              setPhase("done");
+              setPhase("saving");
               setGeneratedArticle(event.data);
+              
+              // 자동으로 저장 시작
+              setTimeout(async () => {
+                try {
+                  console.log("자동 저장 시작:", {
+                    title: event.data.title,
+                    content: event.data.content?.length + "글자",
+                    keywords: event.data.keywords,
+                    template_type: payload.selectedTemplate,
+                  });
+                  
+                  await ensureUnderStoredPostLimit();
+                  const result = await postTemplate({
+                    title: event.data.title,
+                    content: event.data.content,
+                    keywords: event.data.keywords,
+                    template_type: payload.selectedTemplate,
+                  });
+                  
+                  console.log("저장 성공:", result);
+                  clearWriteGeneratingPayload();
+                  toast.success("글이 성공적으로 저장되었습니다!");
+                  
+                  // 2초 후 생성된 글 페이지로 이동
+                  setTimeout(() => {
+                    if (result && Array.isArray(result) && result.length > 0) {
+                      const postId = result[0].id;
+                      router.push(`/post/${postId}`);
+                    } else {
+                      // 만약 ID를 가져올 수 없다면 마이페이지로 대체
+                      router.push("/mypage");
+                    }
+                  }, 2000);
+                  
+                } catch (error) {
+                  console.error("Auto-save error details:", {
+                    error,
+                    message: error instanceof Error ? error.message : String(error),
+                    stack: error instanceof Error ? error.stack : undefined,
+                  });
+                  setPhase("done"); // 자동 저장 실패 시 수동 저장 가능하도록
+                  
+                  if (error instanceof StoredPostLimitError) {
+                    toast.error(
+                      `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
+                    );
+                  } else {
+                    const errorMsg = error instanceof Error ? error.message : "자동 저장에 실패했습니다.";
+                    toast.error(`저장 실패: ${errorMsg}`);
+                  }
+                }
+              }, 1000); // 1초 후에 자동 저장 시작
               break;
               
             case "error":
@@ -109,36 +161,56 @@ export default function GeneratingDraft() {
 
   const handleSave = async () => {
     if (!generatedArticle) return;
-
+    
     const payload = peekWriteGeneratingPayload();
     if (!payload) return;
 
     try {
       setPhase("saving");
+      
+      console.log("수동 저장 시작:", {
+        title: generatedArticle.title,
+        content: generatedArticle.content?.length + "글자",
+        keywords: generatedArticle.keywords,
+        template_type: payload.selectedTemplate,
+      });
+      
       await ensureUnderStoredPostLimit();
-      await postTemplate({
+      const result = await postTemplate({
         title: generatedArticle.title,
         content: generatedArticle.content,
         keywords: generatedArticle.keywords,
         template_type: payload.selectedTemplate,
       });
+      
+      console.log("수동 저장 성공:", result);
       clearWriteGeneratingPayload();
       toast.success("글이 성공적으로 저장되었습니다!");
-
+      
       setTimeout(() => {
-        router.push("/mypage");
+        if (result && Array.isArray(result) && result.length > 0) {
+          const postId = result[0].id;
+          router.push(`/post/${postId}`);
+        } else {
+          // 만약 ID를 가져올 수 없다면 마이페이지로 대체
+          router.push("/mypage");
+        }
       }, 1000);
     } catch (error) {
       setPhase("done");
-      console.error("Save error:", error);
+      console.error("Manual save error details:", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      
       if (error instanceof StoredPostLimitError) {
         toast.error(
           `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
         );
       } else {
-        toast.error(
-          error instanceof Error ? error.message : "저장에 실패했습니다."
-        );
+        const errorMsg = error instanceof Error ? error.message : "저장에 실패했습니다.";
+        toast.error(`저장 실패: ${errorMsg}`);
       }
     }
   };
@@ -278,14 +350,22 @@ export default function GeneratingDraft() {
                       <h1 className="text-3xl font-bold text-white mb-2">
                         {generatedArticle.title}
                       </h1>
-                      <div className="flex flex-wrap gap-2">
-                        {generatedArticle.keywords.map((keyword, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm">
-                            #{keyword}
-                          </span>
-                        ))}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex flex-wrap gap-2">
+                          {generatedArticle.keywords.map((keyword, idx) => (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm">
+                              #{keyword}
+                            </span>
+                          ))}
+                        </div>
+                        {phase === "saving" && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                            <span className="text-blue-400 text-sm">자동 저장 중...</span>
+                          </div>
+                        )}
                       </div>
                     </header>
 
@@ -327,23 +407,36 @@ export default function GeneratingDraft() {
                 <div className="p-6 flex flex-col min-h-full">
                   <div className="flex-shrink-0">
                     <h2 className="text-lg font-semibold text-white mb-6">
-                      작업
+                      {phase === "saving" ? "저장 중..." : "작업"}
                     </h2>
 
-                    <div className="space-y-4">
-                      <Button
-                        onClick={handleSave}
-                        isDisabled={phase === "saving"}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
-                        {phase === "saving" ? "저장 중..." : "저장하기"}
-                      </Button>
+                    {phase === "saving" ? (
+                      <div className="space-y-4">
+                        <div className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <LoadingComponent />
+                            <span>자동 저장 중...</span>
+                          </div>
+                        </div>
+                        <p className="text-slate-400 text-sm text-center">
+                          저장 완료 후 작성한 글 페이지로 이동합니다
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <Button
+                          onClick={handleSave}
+                          className="w-full bg-emerald-600 hover:bg-emerald-700">
+                          저장하기
+                        </Button>
 
-                      <Button
-                        onClick={handleRegenerate}
-                        className="w-full bg-slate-600 hover:bg-slate-700">
-                        다시 생성
-                      </Button>
-                    </div>
+                        <Button
+                          onClick={handleRegenerate}
+                          className="w-full bg-slate-600 hover:bg-slate-700">
+                          다시 생성
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-8 pt-6 border-t border-navy-600 flex-shrink-0">
