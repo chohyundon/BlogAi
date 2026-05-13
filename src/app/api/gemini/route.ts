@@ -2,6 +2,8 @@ import {
   isAiClientErrorMessage,
   normalizeKeywords,
   parseModelJsonOutput,
+  sseEncode,
+  publicAiErrorMessage,
 } from "@/shared/lib/aiRouteCommon";
 import {
   buildUserPrompt,
@@ -26,8 +28,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const raw = body as Record<string, unknown>;
+    const wantStream = raw.stream === true;
+    
     const { topicStr, description, keywords, styleKey } =
-      parseBlogGenerationBody(body as Record<string, unknown>);
+      parseBlogGenerationBody(raw);
 
     const limitGate = await gateStoredPostLimitForAi();
     if (!limitGate.ok) {
@@ -50,6 +55,71 @@ export async function POST(request: NextRequest) {
     const systemPrompt = getSystemPrompt(styleKey);
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
 
+    // SSE 스트리밍 요청인 경우
+    if (wantStream) {
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const model = genAI.getGenerativeModel({
+              model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+              systemInstruction: systemPrompt,
+              generationConfig: {
+                maxOutputTokens: 4000,
+              },
+            });
+
+            const result = await model.generateContentStream(userPrompt);
+            let fullContent = "";
+
+            for await (const chunk of result.stream) {
+              const delta = chunk.text();
+              if (delta) {
+                fullContent += delta;
+                
+                // 스트림으로 델타 전송
+                const encoded = sseEncode("delta", JSON.stringify({
+                  content: delta,
+                  fullContent: fullContent,
+                }));
+                controller.enqueue(new TextEncoder().encode(encoded));
+              }
+            }
+
+            // 최종 결과 파싱 및 전송
+            const parsedResult = parseModelJsonOutput(fullContent);
+            const keywordsResult = normalizeKeywords(parsedResult);
+            const finalResult = {
+              ...parsedResult,
+              keywords: keywordsResult,
+            };
+
+            const encoded = sseEncode("complete", JSON.stringify(finalResult));
+            controller.enqueue(new TextEncoder().encode(encoded));
+            
+          } catch (error) {
+            console.error("Stream Error:", error);
+            const errorMsg = publicAiErrorMessage(error);
+            const encoded = sseEncode("error", JSON.stringify({ error: errorMsg }));
+            controller.enqueue(new TextEncoder().encode(encoded));
+          } finally {
+            controller.close();
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "POST",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
+    // 일반 요청인 경우 (기존 로직)
     const model = genAI.getGenerativeModel({
       model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
       systemInstruction: systemPrompt,

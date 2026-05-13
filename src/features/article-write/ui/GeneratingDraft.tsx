@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ArrowLeft } from "lucide-react";
-import { postArticle } from "@/entities/article/api/postArticle";
+import { postArticleStream, type StreamEvent } from "@/entities/article/api/postArticle";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import {
   peekWriteGeneratingPayload,
@@ -21,15 +21,15 @@ import {
 } from "@/features/article-write/ui/dashboardWriteStyles";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { postTemplate } from "@/entities/template/api/postTemplate";
-import {
-  ensureUnderStoredPostLimit,
-} from "@/entities/template/api/getTemplate";
+import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
 import {
   MAX_STORED_POSTS,
   StoredPostLimitError,
 } from "@/entities/template/model/postLimit";
 import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
+import { extractPartialContent } from "@/shared/lib/extractPartialJsonStringValue";
+import { stabilizeMarkdownForPreview, extractStableTitle } from "@/shared/lib/stabilizeMarkdownForPreview";
 import "@/features/post-view/ui/markDown.css";
 
 const { sectionCard } = dashboardWriteStyles;
@@ -37,8 +37,13 @@ const { sectionCard } = dashboardWriteStyles;
 export default function GeneratingDraft() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const [phase, setPhase] = useState<"loading" | "done" | "saving" | "error">("loading");
-  const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
+  const [phase, setPhase] = useState<"loading" | "streaming" | "done" | "saving" | "error">(
+    "loading"
+  );
+  const [generatedArticle, setGeneratedArticle] =
+    useState<GeneratedArticle | null>(null);
+  const [streamingContent, setStreamingContent] = useState<string>("");
+  const [streamingTitle, setStreamingTitle] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
@@ -52,9 +57,38 @@ export default function GeneratingDraft() {
     const generateArticle = async () => {
       try {
         setPhase("loading");
-        const result = await postArticle(payload);
-        setGeneratedArticle(result);
-        setPhase("done");
+        setStreamingContent("");
+        setStreamingTitle("");
+        
+        await postArticleStream(payload, (event: StreamEvent) => {
+          switch (event.type) {
+            case "delta":
+              setPhase("streaming");
+              const { content, fullContent } = event.data;
+              setStreamingContent(prev => {
+                const newContent = prev + content;
+                
+                // 제목 추출 시도
+                const title = extractStableTitle(fullContent || newContent);
+                if (title) {
+                  setStreamingTitle(title);
+                }
+                
+                return newContent;
+              });
+              break;
+              
+            case "complete":
+              setPhase("done");
+              setGeneratedArticle(event.data);
+              break;
+              
+            case "error":
+              setPhase("error");
+              setErrorMessage(event.data.error || "글 생성에 실패했습니다.");
+              break;
+          }
+        });
       } catch (error) {
         console.error("Generation error:", error);
         setPhase("error");
@@ -75,7 +109,7 @@ export default function GeneratingDraft() {
 
   const handleSave = async () => {
     if (!generatedArticle) return;
-    
+
     const payload = peekWriteGeneratingPayload();
     if (!payload) return;
 
@@ -90,7 +124,7 @@ export default function GeneratingDraft() {
       });
       clearWriteGeneratingPayload();
       toast.success("글이 성공적으로 저장되었습니다!");
-      
+
       setTimeout(() => {
         router.push("/mypage");
       }, 1000);
@@ -120,49 +154,31 @@ export default function GeneratingDraft() {
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
               <LoadingComponent />
-              <p className="text-white text-lg mt-4">AI가 블로그 글을 생성하고 있습니다...</p>
-              <p className="text-slate-400 text-sm mt-2">잠시만 기다려주세요.</p>
+              <p className="text-white text-lg mt-4">
+                AI가 블로그 글을 생성하고 있습니다...
+              </p>
+              <p className="text-slate-400 text-sm mt-2">
+                잠시만 기다려주세요.
+              </p>
             </div>
           </div>
         );
 
-      case "error":
-        return (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center max-w-md">
-              <div className="text-red-400 text-lg mb-4">생성 실패</div>
-              <p className="text-slate-300 mb-6">{errorMessage}</p>
-              <Button onClick={handleRegenerate} className="bg-emerald-600 hover:bg-emerald-700">
-                다시 시도
-              </Button>
-            </div>
-          </div>
-        );
-
-      case "done":
-      case "saving":
-        if (!generatedArticle) return null;
-        
+      case "streaming":
         return (
           <div className="h-full flex">
-            {/* 메인 콘텐츠 영역 - 스크롤 가능 */}
+            {/* 메인 콘텐츠 영역 - 실시간 스트리밍 */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <div className="min-h-full">
                 <div className="max-w-4xl mx-auto p-8">
                   <div className={`${sectionCard} bg-navy-800 border-navy-700`}>
                     <header className="mb-6">
                       <h1 className="text-3xl font-bold text-white mb-2">
-                        {generatedArticle.title}
+                        {streamingTitle || "글을 생성하고 있습니다..."}
                       </h1>
-                      <div className="flex flex-wrap gap-2">
-                        {generatedArticle.keywords.map((keyword, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm"
-                          >
-                            #{keyword}
-                          </span>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span className="text-slate-400 text-sm">실시간 생성 중...</span>
                       </div>
                     </header>
                     
@@ -189,6 +205,111 @@ export default function GeneratingDraft() {
                             },
                           }}
                         >
+                          {stabilizeMarkdownForPreview(streamingContent)}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="h-8"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* 사이드바 - 스트리밍 중 */}
+            <div className="w-80 border-l border-navy-700 bg-navy-900 flex-shrink-0">
+              <div className="h-full overflow-y-auto">
+                <div className="p-6 flex flex-col min-h-full">
+                  <div className="flex-shrink-0">
+                    <h2 className="text-lg font-semibold text-white mb-6">생성 중...</h2>
+                    
+                    <div className="space-y-4">
+                      <Button
+                        isDisabled={true}
+                        className="w-full bg-slate-600 opacity-50 cursor-not-allowed"
+                      >
+                        생성 완료까지 기다려주세요
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-navy-600 flex-shrink-0">
+                    <h3 className="text-sm font-medium text-slate-300 mb-3">진행 상황</h3>
+                    <div className="space-y-2 text-sm text-slate-400">
+                      <div>생성된 글자 수: 약 {streamingContent.length}자</div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span>AI가 글을 작성하고 있습니다...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "error":
+        return (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center max-w-md">
+              <div className="text-red-400 text-lg mb-4">생성 실패</div>
+              <p className="text-slate-300 mb-6">{errorMessage}</p>
+              <Button
+                onClick={handleRegenerate}
+                className="bg-emerald-600 hover:bg-emerald-700">
+                다시 시도
+              </Button>
+            </div>
+          </div>
+        );
+
+      case "done":
+      case "saving":
+        if (!generatedArticle) return null;
+
+        return (
+          <div className="h-full flex">
+            {/* 메인 콘텐츠 영역 - 스크롤 가능 */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="min-h-full">
+                <div className="max-w-4xl mx-auto p-8">
+                  <div className={`${sectionCard} bg-navy-800 border-navy-700`}>
+                    <header className="mb-6">
+                      <h1 className="text-3xl font-bold text-white mb-2">
+                        {generatedArticle.title}
+                      </h1>
+                      <div className="flex flex-wrap gap-2">
+                        {generatedArticle.keywords.map((keyword, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm">
+                            #{keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </header>
+
+                    <div className="prose prose-invert max-w-none">
+                      <div className="markdown">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            code({ className, children }) {
+                              const match = /language-(\w+)/.exec(
+                                className || ""
+                              );
+                              return match ? (
+                                <SyntaxHighlighter
+                                  style={lucario as any}
+                                  language={match[1]}
+                                  PreTag="div">
+                                  {String(children).replace(/\n$/, "")}
+                                </SyntaxHighlighter>
+                              ) : (
+                                <code className={className}>{children}</code>
+                              );
+                            },
+                          }}>
                           {generatedArticle.content}
                         </ReactMarkdown>
                       </div>
@@ -205,28 +326,30 @@ export default function GeneratingDraft() {
               <div className="h-full overflow-y-auto">
                 <div className="p-6 flex flex-col min-h-full">
                   <div className="flex-shrink-0">
-                    <h2 className="text-lg font-semibold text-white mb-6">작업</h2>
-                    
+                    <h2 className="text-lg font-semibold text-white mb-6">
+                      작업
+                    </h2>
+
                     <div className="space-y-4">
                       <Button
                         onClick={handleSave}
                         isDisabled={phase === "saving"}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
-                      >
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
                         {phase === "saving" ? "저장 중..." : "저장하기"}
                       </Button>
-                      
+
                       <Button
                         onClick={handleRegenerate}
-                        className="w-full bg-slate-600 hover:bg-slate-700"
-                      >
+                        className="w-full bg-slate-600 hover:bg-slate-700">
                         다시 생성
                       </Button>
                     </div>
                   </div>
 
                   <div className="mt-8 pt-6 border-t border-navy-600 flex-shrink-0">
-                    <h3 className="text-sm font-medium text-slate-300 mb-3">생성 정보</h3>
+                    <h3 className="text-sm font-medium text-slate-300 mb-3">
+                      생성 정보
+                    </h3>
                     <div className="space-y-2 text-sm text-slate-400">
                       <div>제목: {generatedArticle.title}</div>
                       <div>키워드: {generatedArticle.keywords.length}개</div>
@@ -263,8 +386,7 @@ export default function GeneratingDraft() {
         <div className="flex items-center gap-4">
           <Link
             href="/write"
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-          >
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft size={20} />
             <span>뒤로 가기</span>
           </Link>
@@ -274,9 +396,7 @@ export default function GeneratingDraft() {
       </header>
 
       {/* 메인 콘텐츠 */}
-      <main className="flex-1 overflow-hidden">
-        {renderContent()}
-      </main>
+      <main className="flex-1 overflow-hidden">{renderContent()}</main>
     </div>
   );
 }

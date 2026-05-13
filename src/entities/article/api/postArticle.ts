@@ -27,3 +27,6 @@ export async function postArticle(
 
   return (await res.json()) as GeneratedArticle;
 }
+
+// SSE 스트림 기능 re-export
+export { postArticleStream, type StreamEvent } from "./postArticleStream";
