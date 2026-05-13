@@ -350,22 +350,22 @@ export default function GeneratingDraft() {
                       <h1 className="text-3xl font-bold text-white mb-2">
                         {generatedArticle.title}
                       </h1>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex flex-wrap gap-2">
-                          {generatedArticle.keywords.map((keyword, idx) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm">
-                              #{keyword}
-                            </span>
-                          ))}
+                      
+                      {phase === "saving" && (
+                        <div className="mb-3 flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
+                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                          <span className="text-blue-400 text-sm font-medium">자동 저장 중...</span>
                         </div>
-                        {phase === "saving" && (
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                            <span className="text-blue-400 text-sm">자동 저장 중...</span>
-                          </div>
-                        )}
+                      )}
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {generatedArticle.keywords.map((keyword, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-sm">
+                            #{keyword}
+                          </span>
+                        ))}
                       </div>
                     </header>
 
@@ -411,16 +411,23 @@ export default function GeneratingDraft() {
                     </h2>
 
                     {phase === "saving" ? (
-                      <div className="space-y-4">
-                        <div className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <LoadingComponent />
-                            <span>자동 저장 중...</span>
+                      <div className="space-y-6">
+                        <div className="w-full px-4 py-4 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg">
+                          <div className="flex items-center justify-center gap-3 mb-2">
+                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="font-medium">저장하는 중</span>
+                          </div>
+                          <div className="text-xs text-blue-300 text-center">
+                            잠시만 기다려 주세요...
                           </div>
                         </div>
-                        <p className="text-slate-400 text-sm text-center">
-                          저장 완료 후 작성한 글 페이지로 이동합니다
-                        </p>
+                        
+                        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                          <div className="text-slate-300 text-sm mb-2 font-medium">완료 후 자동 이동</div>
+                          <div className="text-slate-400 text-xs">
+                            → 방금 작성한 글 페이지
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
