@@ -80,3 +80,18 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function GET() {
+  const readable = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      controller.enqueue(encoder.encode(`data: 연결됨!\n\n`));
+      controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+      controller.close();
+    },
+  });
+
+  return new Response(readable, {
+    headers: { "Content-Type": "text/event-stream" },
+  });
+}
