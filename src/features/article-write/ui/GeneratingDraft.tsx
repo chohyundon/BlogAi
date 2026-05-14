@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ArrowLeft } from "lucide-react";
-import { postArticleStream, type StreamEvent } from "@/entities/article/api/postArticle";
+import { postArticle } from "@/entities/article/api/postArticle";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import {
   peekWriteGeneratingPayload,
@@ -19,7 +19,6 @@ import {
   NAVY,
   dashboardWriteStyles,
 } from "@/features/article-write/ui/dashboardWriteStyles";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { postTemplate } from "@/entities/template/api/postTemplate";
 import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
 import {
@@ -28,23 +27,35 @@ import {
 } from "@/entities/template/model/postLimit";
 import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
-import { extractPartialContent } from "@/shared/lib/extractPartialJsonStringValue";
-import { stabilizeMarkdownForPreview, extractStableTitle } from "@/shared/lib/stabilizeMarkdownForPreview";
 import "@/features/post-view/ui/markDown.css";
 
 const { sectionCard } = dashboardWriteStyles;
 
 export default function GeneratingDraft() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const [phase, setPhase] = useState<"loading" | "streaming" | "done" | "saving" | "error">(
+  const [phase, setPhase] = useState<"loading" | "done" | "saving" | "error">(
     "loading"
   );
   const [generatedArticle, setGeneratedArticle] =
     useState<GeneratedArticle | null>(null);
-  const [streamingContent, setStreamingContent] = useState<string>("");
-  const [streamingTitle, setStreamingTitle] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
+
+  // 디버깅용 로그
+  console.log("=== GeneratedArticle Debug Info ===");
+  console.log("Phase:", phase);
+  console.log("GeneratedArticle:", generatedArticle);
+
+  if (generatedArticle) {
+    console.log("Title:", generatedArticle.title);
+    console.log("Content length:", generatedArticle.content?.length);
+    console.log(
+      "Content preview:",
+      generatedArticle.content?.substring(0, 200) + "..."
+    );
+    console.log("Keywords:", generatedArticle.keywords);
+    console.log("Template:", generatedArticle.template);
+  }
+  console.log("=====================================");
 
   useEffect(() => {
     const payload = peekWriteGeneratingPayload();
@@ -57,100 +68,51 @@ export default function GeneratingDraft() {
     const generateArticle = async () => {
       try {
         setPhase("loading");
-        setStreamingContent("");
-        setStreamingTitle("");
-        
-        await postArticleStream(payload, (event: StreamEvent) => {
-          switch (event.type) {
-            case "delta":
-              setPhase("streaming");
-              const { content, fullContent } = event.data;
-              setStreamingContent(prev => {
-                const newContent = prev + content;
-                
-                // 제목 추출 시도
-                const title = extractStableTitle(fullContent || newContent);
-                if (title) {
-                  setStreamingTitle(title);
-                }
-                
-                return newContent;
-              });
-              break;
-              
-            case "complete":
-              setPhase("saving");
-              setGeneratedArticle(event.data);
-              
-              // 자동으로 저장 시작
-              setTimeout(async () => {
-                try {
-                  console.log("자동 저장 시작:", {
-                    title: event.data.title,
-                    content: event.data.content?.length + "글자",
-                    keywords: event.data.keywords,
-                    template_type: payload.selectedTemplate,
-                  });
-                  
-                  await ensureUnderStoredPostLimit();
-                  const result = await postTemplate({
-                    title: event.data.title,
-                    content: event.data.content,
-                    keywords: event.data.keywords,
-                    template_type: payload.selectedTemplate,
-                  });
-                  
-                  console.log("저장 성공:", result);
-                  clearWriteGeneratingPayload();
-                  toast.success("글이 성공적으로 저장되었습니다!");
-                  
-                  // 2초 후 생성된 글 페이지로 이동
-                  setTimeout(() => {
-                    if (result && Array.isArray(result) && result.length > 0) {
-                      const postId = result[0].id;
-                      router.push(`/post/${postId}`);
-                    } else {
-                      // 만약 ID를 가져올 수 없다면 마이페이지로 대체
-                      router.push("/mypage");
-                    }
-                  }, 2000);
-                  
-                } catch (error) {
-                  console.error("Auto-save error details:", {
-                    error,
-                    message: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined,
-                  });
-                  setPhase("done"); // 자동 저장 실패 시 수동 저장 가능하도록
-                  
-                  if (error instanceof StoredPostLimitError) {
-                    toast.error(
-                      `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
-                    );
-                  } else {
-                    const errorMsg = error instanceof Error ? error.message : "자동 저장에 실패했습니다.";
-                    toast.error(`저장 실패: ${errorMsg}`);
-                  }
-                }
-              }, 1000); // 1초 후에 자동 저장 시작
-              break;
-              
-            case "error":
-              setPhase("error");
-              setErrorMessage(event.data.error || "글 생성에 실패했습니다.");
-              break;
-          }
+
+        // 단순한 동기 API 호출
+        const result = await postArticle(payload);
+
+        // API 응답 디버깅
+        console.log("=== API Response Debug ===");
+        console.log("Raw API result:", result);
+        console.log("Result type:", typeof result);
+        console.log("Result keys:", result ? Object.keys(result) : "null");
+        console.log("========================");
+
+        setGeneratedArticle(result);
+        setPhase("saving");
+
+        await ensureUnderStoredPostLimit();
+        const saveResult = await postTemplate({
+          title: result.title,
+          content: result.content,
+          keywords: result.keywords,
+          template_type: payload.selectedTemplate,
         });
+
+        clearWriteGeneratingPayload();
+        toast.success("글이 성공적으로 저장되었습니다!");
+
+        // 저장 완료 즉시 생성된 글 페이지로 이동
+        if (saveResult && Array.isArray(saveResult) && saveResult.length > 0) {
+          const postId = saveResult[0].id;
+          router.push(`/post/${postId}`);
+        } else {
+          router.push("/mypage");
+        }
       } catch (error) {
-        console.error("Generation error:", error);
+        console.error("Generation/Save error:", error);
         setPhase("error");
+
         if (error instanceof StoredPostLimitError) {
           setErrorMessage(
             `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
           );
         } else {
           setErrorMessage(
-            error instanceof Error ? error.message : "글 생성에 실패했습니다."
+            error instanceof Error
+              ? error.message
+              : "글 생성 또는 저장에 실패했습니다."
           );
         }
       }
@@ -161,20 +123,13 @@ export default function GeneratingDraft() {
 
   const handleSave = async () => {
     if (!generatedArticle) return;
-    
+
     const payload = peekWriteGeneratingPayload();
     if (!payload) return;
 
     try {
       setPhase("saving");
-      
-      console.log("수동 저장 시작:", {
-        title: generatedArticle.title,
-        content: generatedArticle.content?.length + "글자",
-        keywords: generatedArticle.keywords,
-        template_type: payload.selectedTemplate,
-      });
-      
+
       await ensureUnderStoredPostLimit();
       const result = await postTemplate({
         title: generatedArticle.title,
@@ -182,20 +137,18 @@ export default function GeneratingDraft() {
         keywords: generatedArticle.keywords,
         template_type: payload.selectedTemplate,
       });
-      
-      console.log("수동 저장 성공:", result);
+
       clearWriteGeneratingPayload();
       toast.success("글이 성공적으로 저장되었습니다!");
-      
-      setTimeout(() => {
-        if (result && Array.isArray(result) && result.length > 0) {
-          const postId = result[0].id;
-          router.push(`/post/${postId}`);
-        } else {
-          // 만약 ID를 가져올 수 없다면 마이페이지로 대체
-          router.push("/mypage");
-        }
-      }, 1000);
+
+      // 저장 완료 즉시 생성된 글 페이지로 이동
+      if (result && Array.isArray(result) && result.length > 0) {
+        const postId = result[0].id;
+        router.push(`/post/${postId}`);
+      } else {
+        // 만약 ID를 가져올 수 없다면 마이페이지로 대체
+        router.push("/mypage");
+      }
     } catch (error) {
       setPhase("done");
       console.error("Manual save error details:", {
@@ -203,13 +156,14 @@ export default function GeneratingDraft() {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
-      
+
       if (error instanceof StoredPostLimitError) {
         toast.error(
           `저장된 포스트가 ${MAX_STORED_POSTS}개 한도에 도달했습니다. 기존 포스트를 삭제한 후 다시 시도해주세요.`
         );
       } else {
-        const errorMsg = error instanceof Error ? error.message : "저장에 실패했습니다.";
+        const errorMsg =
+          error instanceof Error ? error.message : "저장에 실패했습니다.";
         toast.error(`저장 실패: ${errorMsg}`);
       }
     }
@@ -236,86 +190,17 @@ export default function GeneratingDraft() {
           </div>
         );
 
-      case "streaming":
+      case "saving":
         return (
-          <div className="h-full flex">
-            {/* 메인 콘텐츠 영역 - 실시간 스트리밍 */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden">
-              <div className="min-h-full">
-                <div className="max-w-4xl mx-auto p-8">
-                  <div className={`${sectionCard} bg-navy-800 border-navy-700`}>
-                    <header className="mb-6">
-                      <h1 className="text-3xl font-bold text-white mb-2">
-                        {streamingTitle || "글을 생성하고 있습니다..."}
-                      </h1>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                        <span className="text-slate-400 text-sm">실시간 생성 중...</span>
-                      </div>
-                    </header>
-                    
-                    <div className="prose prose-invert max-w-none">
-                      <div className="markdown">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            code({ className, children }) {
-                              const match = /language-(\w+)/.exec(className || "");
-                              return match ? (
-                                <SyntaxHighlighter
-                                  style={lucario as any}
-                                  language={match[1]}
-                                  PreTag="div"
-                                >
-                                  {String(children).replace(/\n$/, "")}
-                                </SyntaxHighlighter>
-                              ) : (
-                                <code className={className}>
-                                  {children}
-                                </code>
-                              );
-                            },
-                          }}
-                        >
-                          {stabilizeMarkdownForPreview(streamingContent)}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="h-8"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* 사이드바 - 스트리밍 중 */}
-            <div className="w-80 border-l border-navy-700 bg-navy-900 flex-shrink-0">
-              <div className="h-full overflow-y-auto">
-                <div className="p-6 flex flex-col min-h-full">
-                  <div className="flex-shrink-0">
-                    <h2 className="text-lg font-semibold text-white mb-6">생성 중...</h2>
-                    
-                    <div className="space-y-4">
-                      <Button
-                        isDisabled={true}
-                        className="w-full bg-slate-600 opacity-50 cursor-not-allowed"
-                      >
-                        생성 완료까지 기다려주세요
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-navy-600 flex-shrink-0">
-                    <h3 className="text-sm font-medium text-slate-300 mb-3">진행 상황</h3>
-                    <div className="space-y-2 text-sm text-slate-400">
-                      <div>생성된 글자 수: 약 {streamingContent.length}자</div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                        <span>AI가 글을 작성하고 있습니다...</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <LoadingComponent />
+              <p className="text-white text-lg mt-4">
+                글을 저장하고 있습니다...
+              </p>
+              <p className="text-slate-400 text-sm mt-2">
+                완료 후 자동으로 글 페이지로 이동합니다.
+              </p>
             </div>
           </div>
         );
@@ -324,7 +209,7 @@ export default function GeneratingDraft() {
         return (
           <div className="h-full flex items-center justify-center">
             <div className="text-center max-w-md">
-              <div className="text-red-400 text-lg mb-4">생성 실패</div>
+              <div className="text-red-400 text-lg mb-4">생성/저장 실패</div>
               <p className="text-slate-300 mb-6">{errorMessage}</p>
               <Button
                 onClick={handleRegenerate}
@@ -336,12 +221,11 @@ export default function GeneratingDraft() {
         );
 
       case "done":
-      case "saving":
         if (!generatedArticle) return null;
 
         return (
           <div className="h-full flex">
-            {/* 메인 콘텐츠 영역 - 스크롤 가능 */}
+            {/* 메인 콘텐츠 영역 */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <div className="min-h-full">
                 <div className="max-w-4xl mx-auto p-8">
@@ -350,14 +234,7 @@ export default function GeneratingDraft() {
                       <h1 className="text-3xl font-bold text-white mb-2">
                         {generatedArticle.title}
                       </h1>
-                      
-                      {phase === "saving" && (
-                        <div className="mb-3 flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-4 py-2">
-                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                          <span className="text-blue-400 text-sm font-medium">자동 저장 중...</span>
-                        </div>
-                      )}
-                      
+
                       <div className="flex flex-wrap gap-2">
                         {generatedArticle.keywords.map((keyword, idx) => (
                           <span
@@ -380,7 +257,7 @@ export default function GeneratingDraft() {
                               );
                               return match ? (
                                 <SyntaxHighlighter
-                                  style={lucario as any}
+                                  style={lucario}
                                   language={match[1]}
                                   PreTag="div">
                                   {String(children).replace(/\n$/, "")}
@@ -395,55 +272,81 @@ export default function GeneratingDraft() {
                       </div>
                     </div>
                   </div>
-                  {/* 하단 여백 추가 */}
                   <div className="h-8"></div>
                 </div>
               </div>
             </div>
 
-            {/* 사이드바 - 고정 */}
+            {/* 사이드바 */}
             <div className="w-80 border-l border-navy-700 bg-navy-900 flex-shrink-0">
               <div className="h-full overflow-y-auto">
                 <div className="p-6 flex flex-col min-h-full">
+                  {/* 디버그 정보 패널 (개발환경에서만) */}
+                  {process.env.NODE_ENV === "development" && (
+                    <div className="mb-6 p-4 bg-navy-800 border border-navy-600 rounded-lg">
+                      <h3 className="text-sm font-semibold text-yellow-400 mb-2">
+                        🔍 Debug Info
+                      </h3>
+                      <div className="text-xs text-slate-300 space-y-1">
+                        <div>
+                          Phase: <span className="text-blue-400">{phase}</span>
+                        </div>
+                        <div>
+                          Has Article:{" "}
+                          <span className="text-green-400">
+                            {generatedArticle ? "Yes" : "No"}
+                          </span>
+                        </div>
+                        {generatedArticle && (
+                          <>
+                            <div>
+                              Title:{" "}
+                              <span className="text-white truncate block">
+                                {generatedArticle.title}
+                              </span>
+                            </div>
+                            <div>
+                              Content Length:{" "}
+                              <span className="text-orange-400">
+                                {generatedArticle.content?.length || 0}
+                              </span>
+                            </div>
+                            <div>
+                              Keywords:{" "}
+                              <span className="text-purple-400">
+                                {generatedArticle.keywords?.length || 0}
+                              </span>
+                            </div>
+                            <div>
+                              Template:{" "}
+                              <span className="text-pink-400">
+                                {generatedArticle.template}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex-shrink-0">
                     <h2 className="text-lg font-semibold text-white mb-6">
-                      {phase === "saving" ? "저장 중..." : "작업"}
+                      작업
                     </h2>
 
-                    {phase === "saving" ? (
-                      <div className="space-y-6">
-                        <div className="w-full px-4 py-4 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg">
-                          <div className="flex items-center justify-center gap-3 mb-2">
-                            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="font-medium">저장하는 중</span>
-                          </div>
-                          <div className="text-xs text-blue-300 text-center">
-                            잠시만 기다려 주세요...
-                          </div>
-                        </div>
-                        
-                        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                          <div className="text-slate-300 text-sm mb-2 font-medium">완료 후 자동 이동</div>
-                          <div className="text-slate-400 text-xs">
-                            → 방금 작성한 글 페이지
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <Button
-                          onClick={handleSave}
-                          className="w-full bg-emerald-600 hover:bg-emerald-700">
-                          저장하기
-                        </Button>
+                    <div className="space-y-4">
+                      <Button
+                        onClick={handleSave}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700">
+                        저장하기
+                      </Button>
 
-                        <Button
-                          onClick={handleRegenerate}
-                          className="w-full bg-slate-600 hover:bg-slate-700">
-                          다시 생성
-                        </Button>
-                      </div>
-                    )}
+                      <Button
+                        onClick={handleRegenerate}
+                        className="w-full bg-slate-600 hover:bg-slate-700">
+                        다시 생성
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="mt-8 pt-6 border-t border-navy-600 flex-shrink-0">
