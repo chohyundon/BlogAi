@@ -28,6 +28,7 @@ import {
 import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
 import "@/features/post-view/ui/markDown.css";
+import Generation from "@/features/article-write/ui/sse/Generation";
 
 const { sectionCard } = dashboardWriteStyles;
 
@@ -56,6 +57,8 @@ export default function GeneratingDraft() {
     console.log("Template:", generatedArticle.template);
   }
   console.log("=====================================");
+
+  Generation();
 
   useEffect(() => {
     const payload = peekWriteGeneratingPayload();
@@ -400,6 +403,7 @@ export default function GeneratingDraft() {
 
       {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-hidden">{renderContent()}</main>
+      <Generation />
     </div>
   );
 }

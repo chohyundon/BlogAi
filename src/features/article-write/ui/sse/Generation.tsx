@@ -1,13 +1,26 @@
 "use client";
 
-import { GeneratedArticle } from "@/entities/article/model/generatedArticle";
+import { useState, useEffect } from "react";
 
-export default function Generation(generatedArticle: GeneratedArticle) {
-  const sse = new EventSource("/api/gemini");
+export default function Generation() {
+  const [data, setData] = useState<string>("");
 
-  sse.onmessage = (event) => {
-    console.log(event.data);
-  };
+  useEffect(() => {
+    const sse = new EventSource("/api/gemini");
 
-  return <div>Generation</div>;
+    sse.onmessage = (event) => {
+      if (event.data === "[DONE]") return sse.close();
+      console.log("Generation: ", event.data);
+      setData((prev) => prev + event.data);
+    };
+
+    sse.onerror = () => {
+      sse.close();
+    };
+
+    // 컴포넌트 언마운트 시 연결 정리
+    return () => sse.close();
+  }, []); // [] = 마운트 시 한 번만 실행
+
+  return <div>{data}</div>;
 }
