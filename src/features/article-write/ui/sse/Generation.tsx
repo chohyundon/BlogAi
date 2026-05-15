@@ -6,7 +6,9 @@ export default function Generation() {
   const [data, setData] = useState<string>("");
 
   useEffect(() => {
-    const sse = new EventSource("/api/gemini");
+    const sse = new EventSource(
+      `/api/gemini?topic=${encodeURIComponent("블로그 초안 써줘")}`
+    );
 
     sse.onmessage = (event) => {
       if (event.data === "[DONE]") return sse.close();

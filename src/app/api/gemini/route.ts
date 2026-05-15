@@ -81,17 +81,38 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const topic = searchParams.get("topic") ?? "기본 주제";
+
+  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GEMINI_APT_KEY;
+  const genAI = new GoogleGenerativeAI(apiKey!);
+  const model = genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+  });
+
   const readable = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
-      controller.enqueue(encoder.encode(`data: 연결됨!\n\n`));
+
+      const result = await model.generateContentStream(topic);
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) {
+          controller.enqueue(encoder.encode(`data: ${text}\n\n`));
+        }
+      }
+
       controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
       controller.close();
     },
   });
 
   return new Response(readable, {
-    headers: { "Content-Type": "text/event-stream" },
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+    },
   });
 }

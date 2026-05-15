@@ -104,7 +104,6 @@ export default function GeneratingDraft() {
           router.push("/mypage");
         }
       } catch (error) {
-        console.error("Generation/Save error:", error);
         setPhase("error");
 
         if (error instanceof StoredPostLimitError) {
