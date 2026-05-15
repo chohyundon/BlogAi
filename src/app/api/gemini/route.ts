@@ -82,37 +82,78 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const topic = searchParams.get("topic") ?? "기본 주제";
+  try {
+    const { searchParams } = new URL(request.url);
+    const topic = searchParams.get("topic") ?? "기본 주제";
 
-  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GEMINI_APT_KEY;
-  const genAI = new GoogleGenerativeAI(apiKey!);
-  const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
-  });
+    console.log("SSE 요청 시작:", { topic });
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder();
+    // API 키 확인
+    const apiKey = process.env.GEMINI_API_KEY ?? process.env.GEMINI_APT_KEY;
+    if (!apiKey) {
+      console.error("GEMINI API 키가 설정되지 않았습니다");
+      return new Response("GEMINI API 키가 설정되지 않았습니다", { status: 500 });
+    }
 
-      const result = await model.generateContentStream(topic);
+    console.log("API 키 확인됨");
 
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
-        if (text) {
-          controller.enqueue(encoder.encode(`data: ${text}\n\n`));
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL ?? "gemini-1.5-flash", // 안정적인 모델로 변경
+    });
+
+    console.log("모델 초기화 완료");
+
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          const encoder = new TextEncoder();
+          
+          console.log("스트림 생성 시작");
+          controller.enqueue(encoder.encode(`data: 연결됨! 주제: ${topic}\n\n`));
+
+          const result = await model.generateContentStream(topic);
+          console.log("Gemini 스트림 시작");
+
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              console.log("청크 받음:", text.substring(0, 50) + "...");
+              controller.enqueue(encoder.encode(`data: ${text}\n\n`));
+            }
+          }
+
+          console.log("스트림 완료");
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
+        } catch (streamError) {
+          console.error("스트림 에러:", streamError);
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode(`data: 에러 발생: ${streamError}\n\n`));
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
         }
+      },
+    });
+
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+  } catch (error) {
+    console.error("SSE GET 에러:", error);
+    return new Response(
+      JSON.stringify({ 
+        error: "SSE 연결 실패", 
+        details: error instanceof Error ? error.message : String(error) 
+      }), 
+      { 
+        status: 500,
+        headers: { "Content-Type": "application/json" }
       }
-
-      controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-      controller.close();
-    },
-  });
-
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-    },
-  });
+    );
+  }
 }
