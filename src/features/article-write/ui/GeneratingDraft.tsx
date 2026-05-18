@@ -58,8 +58,6 @@ export default function GeneratingDraft() {
   }
   console.log("=====================================");
 
-  Generation();
-
   useEffect(() => {
     const payload = peekWriteGeneratingPayload();
     if (!payload) {
@@ -179,15 +177,18 @@ export default function GeneratingDraft() {
     switch (phase) {
       case "loading":
         return (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <LoadingComponent />
-              <p className="text-white text-lg mt-4">
-                AI가 블로그 글을 생성하고 있습니다...
-              </p>
-              <p className="text-slate-400 text-sm mt-2">
-                잠시만 기다려주세요.
-              </p>
+          <div className="h-full overflow-y-auto p-8">
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="text-center">
+                <LoadingComponent />
+                <p className="text-white text-lg mt-4">
+                  AI가 블로그 글을 생성하고 있습니다...
+                </p>
+                <p className="text-slate-400 text-sm mt-2">
+                  잠시만 기다려주세요.
+                </p>
+              </div>
+              <Generation />
             </div>
           </div>
         );
@@ -402,7 +403,6 @@ export default function GeneratingDraft() {
 
       {/* 메인 콘텐츠 */}
       <main className="flex-1 overflow-hidden">{renderContent()}</main>
-      <Generation />
     </div>
   );
 }
