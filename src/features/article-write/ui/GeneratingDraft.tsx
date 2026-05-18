@@ -29,6 +29,7 @@ import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
 import "@/features/post-view/ui/markDown.css";
 import Generation from "@/features/article-write/ui/sse/Generation";
+import { getSseTopicFromSession } from "@/features/article-write/lib/buildSseTopicFromSession";
 
 const { sectionCard } = dashboardWriteStyles;
 
@@ -40,23 +41,6 @@ export default function GeneratingDraft() {
   const [generatedArticle, setGeneratedArticle] =
     useState<GeneratedArticle | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
-
-  // 디버깅용 로그
-  console.log("=== GeneratedArticle Debug Info ===");
-  console.log("Phase:", phase);
-  console.log("GeneratedArticle:", generatedArticle);
-
-  if (generatedArticle) {
-    console.log("Title:", generatedArticle.title);
-    console.log("Content length:", generatedArticle.content?.length);
-    console.log(
-      "Content preview:",
-      generatedArticle.content?.substring(0, 200) + "..."
-    );
-    console.log("Keywords:", generatedArticle.keywords);
-    console.log("Template:", generatedArticle.template);
-  }
-  console.log("=====================================");
 
   useEffect(() => {
     const payload = peekWriteGeneratingPayload();
@@ -72,13 +56,6 @@ export default function GeneratingDraft() {
 
         // 단순한 동기 API 호출
         const result = await postArticle(payload);
-
-        // API 응답 디버깅
-        console.log("=== API Response Debug ===");
-        console.log("Raw API result:", result);
-        console.log("Result type:", typeof result);
-        console.log("Result keys:", result ? Object.keys(result) : "null");
-        console.log("========================");
 
         setGeneratedArticle(result);
         setPhase("saving");
@@ -151,11 +128,6 @@ export default function GeneratingDraft() {
       }
     } catch (error) {
       setPhase("done");
-      console.error("Manual save error details:", {
-        error,
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
 
       if (error instanceof StoredPostLimitError) {
         toast.error(
@@ -173,22 +145,28 @@ export default function GeneratingDraft() {
     router.push("/write");
   };
 
+  const sseTopic = getSseTopicFromSession();
+
   const renderContent = () => {
     switch (phase) {
       case "loading":
         return (
           <div className="h-full overflow-y-auto p-8">
-            <div className="max-w-4xl mx-auto space-y-6">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pt-2">
               <div className="text-center">
                 <LoadingComponent />
-                <p className="text-white text-lg mt-4">
+                <p className="mt-4 text-lg text-white">
                   AI가 블로그 글을 생성하고 있습니다...
                 </p>
-                <p className="text-slate-400 text-sm mt-2">
+                <p className="mt-2 text-sm text-slate-400">
                   잠시만 기다려주세요.
                 </p>
               </div>
-              <Generation />
+              {sseTopic ? (
+                <div className="w-full">
+                  <Generation topic={sseTopic} />
+                </div>
+              ) : null}
             </div>
           </div>
         );

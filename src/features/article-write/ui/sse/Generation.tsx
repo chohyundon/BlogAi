@@ -1,42 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useGeminiSseStream } from "@/features/article-write/model/useGeminiSseStream";
 
-export default function Generation() {
-  const [data, setData] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const [status, setStatus] = useState<string>("연결 시도 중...");
+type GenerationProps = {
+  topic: string;
+};
 
-  useEffect(() => {
-    const sse = new EventSource(
-      `/api/gemini?topic=${encodeURIComponent("블로그 초안 써줘")}`
-    );
-
-    sse.onopen = () => {
-      setStatus("연결됨");
-      setError("");
-    };
-
-    sse.onmessage = (event) => {
-      if (event.data === "[DONE]") {
-        setStatus("완료");
-        return sse.close();
-      }
-
-      setData((prev) => prev + event.data);
-    };
-
-    sse.onerror = (event) => {
-      console.error("SSE 에러:", event);
-      setError("연결 오류 발생");
-      setStatus("에러");
-      sse.close();
-    };
-
-    return () => {
-      sse.close();
-    };
-  }, []);
+export default function Generation({ topic }: GenerationProps) {
+  const { data, error, status } = useGeminiSseStream(topic);
 
   return (
     <div className="rounded-xl border border-navy-700 bg-navy-900 p-5 text-white shadow-lg">

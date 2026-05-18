@@ -89,53 +89,39 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const topic = searchParams.get("topic") ?? "기본 주제";
 
-    console.log("SSE 요청 시작:", { topic });
-
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
-      console.error(
-        "GEMINI_API_KEY(또는 NEXT_PUBLIC_GEMINI_API_KEY)가 설정되지 않았습니다"
-      );
       return new Response("GEMINI API 키가 설정되지 않았습니다", {
         status: 500,
       });
     }
-
-    console.log("API 키 확인됨");
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: getGeminiModel(),
     });
 
-    console.log("모델 초기화 완료");
-
     const readable = new ReadableStream({
       async start(controller) {
         try {
           const encoder = new TextEncoder();
 
-          console.log("스트림 생성 시작");
           controller.enqueue(
             encoder.encode(`data: 연결됨! 주제: ${topic}\n\n`)
           );
 
           const result = await model.generateContentStream(topic);
-          console.log("Gemini 스트림 시작");
 
           for await (const chunk of result.stream) {
             const text = chunk.text();
             if (text) {
-              console.log("청크 받음:", text.substring(0, 50) + "...");
               controller.enqueue(encoder.encode(`data: ${text}\n\n`));
             }
           }
 
-          console.log("스트림 완료");
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
           controller.close();
         } catch (streamError) {
-          console.error("스트림 에러:", streamError);
           const encoder = new TextEncoder();
           controller.enqueue(
             encoder.encode(`data: 에러 발생: ${streamError}\n\n`)
