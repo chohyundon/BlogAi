@@ -151,19 +151,25 @@ export default function GeneratingDraft() {
     switch (phase) {
       case "loading":
         return (
-          <div className="h-full overflow-y-auto p-8">
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 pt-2">
-              <div className="text-center">
-                <LoadingComponent />
-                <p className="mt-4 text-lg text-white">
-                  AI가 블로그 글을 생성하고 있습니다...
-                </p>
-                <p className="mt-2 text-sm text-slate-400">
-                  잠시만 기다려주세요.
-                </p>
+          <div className="h-full min-h-0 overflow-y-auto">
+            <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-5 py-8 md:px-8 md:py-10">
+              <div className="rounded-2xl border border-navy-700/70 bg-navy-900/35 px-6 py-10 text-center shadow-inner shadow-black/10 ring-1 ring-white/3">
+                <div className="mx-auto flex max-w-md flex-col items-center">
+                  <LoadingComponent />
+                  <p className="mt-5 text-lg font-medium text-white">
+                    AI가 블로그 글을 생성하고 있습니다
+                  </p>
+                  <p className="mt-2 text-sm text-slate-400">
+                    저장까지 완료되면 글 페이지로 이동합니다.
+                  </p>
+                  <div className="mt-6 flex items-center gap-2 text-xs text-slate-500">
+                    <span className="h-1 w-1 rounded-full bg-emerald-500/80" />
+                    본문 생성 중 · 아래는 같은 주제의 실시간 스트림입니다
+                  </div>
+                </div>
               </div>
               {sseTopic ? (
-                <div className="w-full">
+                <div className="w-full pb-4">
                   <Generation topic={sseTopic} />
                 </div>
               ) : null}
