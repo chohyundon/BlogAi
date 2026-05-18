@@ -9,7 +9,7 @@ import {
   parseBlogGenerationBody,
 } from "@/shared/lib/blogGenerationPrompt";
 import { gateStoredPostLimitForAi } from "@/entities/template/api/gateStoredPostLimitForAi";
-import { getGeminiApiKey } from "@/shared/lib/geminiEnv";
+import { getGeminiApiKey, getGeminiModel } from "@/shared/lib/geminiEnv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
 
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+      model: getGeminiModel(),
       systemInstruction: systemPrompt,
       generationConfig: {
         maxOutputTokens: 2000,
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: process.env.GEMINI_MODEL ?? "gemini-1.5-flash", // 안정적인 모델로 변경
+      model: getGeminiModel(),
     });
 
     console.log("모델 초기화 완료");
