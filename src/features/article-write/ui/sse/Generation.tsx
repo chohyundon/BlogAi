@@ -2,10 +2,15 @@
 
 import type { LucideIcon } from "lucide-react";
 import { AlertCircle, CheckCircle2, Radio, Sparkles, Wifi } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import SyntaxHighlighter from "react-syntax-highlighter";
+import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
 import {
   useGeminiSseStream,
   type GeminiSseStatus,
 } from "@/features/article-write/model/useGeminiSseStream";
+import "@/features/post-view/ui/markDown.css";
 
 type GenerationProps = {
   topic: string;
@@ -102,13 +107,33 @@ export default function Generation({ topic }: GenerationProps) {
               ? "border-emerald-500/25 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
               : "border-navy-600/90"
           }`}>
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-200">
-            {data || (
-              <span className="text-slate-500">
-                수신된 텍스트가 여기에 표시됩니다.
-              </span>
-            )}
-          </pre>
+          {data ? (
+            <div className="markdown">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ className, children }) {
+                    const match = /language-(\w+)/.exec(className || "");
+                    return match ? (
+                      <SyntaxHighlighter
+                        style={lucario}
+                        language={match[1]}
+                        PreTag="div">
+                        {String(children).replace(/\n$/, "")}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className}>{children}</code>
+                    );
+                  },
+                }}>
+                {data}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">
+              수신된 텍스트가 여기에 표시됩니다.
+            </p>
+          )}
         </div>
 
         {data.length > 0 ? (
