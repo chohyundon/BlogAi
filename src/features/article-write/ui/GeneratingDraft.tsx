@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast, ToastContainer } from "react-toastify";
@@ -9,11 +9,11 @@ import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ArrowLeft } from "lucide-react";
-import { postArticle } from "@/entities/article/api/postArticle";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import {
   peekWriteGeneratingPayload,
   clearWriteGeneratingPayload,
+  type WriteGeneratingPayload,
 } from "@/features/article-write/lib/writeGeneratingSession";
 import {
   NAVY,
@@ -29,49 +29,65 @@ import Button from "@/shared/ui/Button";
 import LoadingComponent from "@/shared/ui/Loading";
 import "@/features/post-view/ui/markDown.css";
 import Generation from "@/features/article-write/ui/sse/Generation";
-import { getSseTopicFromSession } from "@/features/article-write/lib/buildSseTopicFromSession";
+import { useArticleGenerationStream } from "@/features/article-write/model/useArticleGenerationStream";
 
 const { sectionCard } = dashboardWriteStyles;
 
 export default function GeneratingDraft() {
   const router = useRouter();
+  const [payload] = useState<WriteGeneratingPayload | null>(() =>
+    peekWriteGeneratingPayload()
+  );
   const [phase, setPhase] = useState<"loading" | "done" | "saving" | "error">(
     "loading"
   );
   const [generatedArticle, setGeneratedArticle] =
     useState<GeneratedArticle | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const saveStartedRef = useRef(false);
+
+  const {
+    preview,
+    article,
+    error: streamError,
+    status,
+  } = useArticleGenerationStream(payload, payload?.selectedTemplate ?? "");
 
   useEffect(() => {
-    const payload = peekWriteGeneratingPayload();
     if (!payload) {
       toast.warning("작성 정보가 없습니다. 다시 입력해 주세요.");
       router.replace("/write");
-      return;
     }
+  }, [payload, router]);
 
-    const generateArticle = async () => {
+  useEffect(() => {
+    if (status === "에러" && streamError) {
+      setPhase("error");
+      setErrorMessage(streamError);
+    }
+  }, [status, streamError]);
+
+  useEffect(() => {
+    if (!article || !payload || saveStartedRef.current) return;
+
+    saveStartedRef.current = true;
+    setGeneratedArticle(article);
+
+    const saveArticle = async () => {
       try {
-        setPhase("loading");
-
-        // 단순한 동기 API 호출
-        const result = await postArticle(payload);
-
-        setGeneratedArticle(result);
         setPhase("saving");
 
         await ensureUnderStoredPostLimit();
         const saveResult = await postTemplate({
-          title: result.title,
-          content: result.content,
-          keywords: result.keywords,
+          title: article.title,
+          content: article.content,
+          keywords: article.keywords,
           template_type: payload.selectedTemplate,
         });
 
         clearWriteGeneratingPayload();
         toast.success("글이 성공적으로 저장되었습니다!");
 
-        // 저장 완료 즉시 생성된 글 페이지로 이동
         if (saveResult && Array.isArray(saveResult) && saveResult.length > 0) {
           const postId = saveResult[0].id;
           router.push(`/post/${postId}`);
@@ -95,8 +111,8 @@ export default function GeneratingDraft() {
       }
     };
 
-    generateArticle();
-  }, [router]);
+    void saveArticle();
+  }, [article, payload, router]);
 
   const handleSave = async () => {
     if (!generatedArticle) return;
@@ -145,19 +161,21 @@ export default function GeneratingDraft() {
     router.push("/write");
   };
 
-  const sseTopic = getSseTopicFromSession();
-
   const renderContent = () => {
     switch (phase) {
       case "loading":
         return (
           <div className="h-full min-h-0 overflow-y-auto p-6 md:p-8">
             <div className="mx-auto w-full max-w-4xl pb-6">
-              {sseTopic ? (
-                <Generation topic={sseTopic} />
+              {payload ? (
+                <Generation
+                  preview={preview}
+                  error={streamError}
+                  status={status}
+                />
               ) : (
                 <p className="text-center text-sm text-slate-400">
-                  주제 정보를 불러올 수 없습니다.
+                  작성 정보를 불러올 수 없습니다.
                 </p>
               )}
             </div>

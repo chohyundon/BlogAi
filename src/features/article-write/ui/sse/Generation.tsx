@@ -6,17 +6,16 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
-import {
-  useGeminiSseStream,
-  type GeminiSseStatus,
-} from "@/features/article-write/model/useGeminiSseStream";
+import type { ArticleGenerationStatus } from "@/features/article-write/model/useArticleGenerationStream";
 import "@/features/post-view/ui/markDown.css";
 
 type GenerationProps = {
-  topic: string;
+  preview: string;
+  error: string;
+  status: ArticleGenerationStatus;
 };
 
-function statusVisual(status: GeminiSseStatus): {
+function statusVisual(status: ArticleGenerationStatus): {
   badge: string;
   dot: string;
   Icon: LucideIcon;
@@ -59,8 +58,11 @@ function statusVisual(status: GeminiSseStatus): {
   }
 }
 
-export default function Generation({ topic }: GenerationProps) {
-  const { data, error, status } = useGeminiSseStream(topic);
+export default function Generation({
+  preview,
+  error,
+  status,
+}: GenerationProps) {
   const vs = statusVisual(status);
   const StatusIcon = vs.Icon;
   const isStreaming = status === "연결됨" || status === "연결 시도 중...";
@@ -80,7 +82,7 @@ export default function Generation({ topic }: GenerationProps) {
                 실시간 미리보기
               </h2>
               <p className="truncate text-xs text-slate-500">
-                Gemini SSE · 작성 주제와 동일한 프롬프트로 스트리밍됩니다
+                생성과 동시에 본문이 스트리밍됩니다
               </p>
             </div>
           </div>
@@ -107,7 +109,7 @@ export default function Generation({ topic }: GenerationProps) {
               ? "border-emerald-500/25 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.08)]"
               : "border-navy-600/90"
           }`}>
-          {data ? (
+          {preview ? (
             <div className="markdown">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -126,7 +128,7 @@ export default function Generation({ topic }: GenerationProps) {
                     );
                   },
                 }}>
-                {data}
+                {preview}
               </ReactMarkdown>
             </div>
           ) : (
@@ -136,11 +138,11 @@ export default function Generation({ topic }: GenerationProps) {
           )}
         </div>
 
-        {data.length > 0 ? (
+        {preview.length > 0 ? (
           <div className="flex items-center justify-between border-t border-navy-700/60 pt-3 text-xs text-slate-500">
             <span>수신 글자 수</span>
             <span className="font-medium tabular-nums text-slate-400">
-              {data.length.toLocaleString()}자
+              {preview.length.toLocaleString()}자
             </span>
           </div>
         ) : null}
