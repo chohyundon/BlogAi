@@ -75,7 +75,7 @@ export function useArticleGeneration(
       }
     };
 
-    void run();
+    run();
 
     return () => controller.abort();
   }, [payload, templateKey]);

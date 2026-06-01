@@ -7,10 +7,7 @@ import Button from "@/shared/ui/Button";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
 import { saveWriteGeneratingPayload } from "@/features/article-write/lib/writeGeneratingSession";
 import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
-import {
-  MAX_STORED_POSTS,
-  StoredPostLimitError,
-} from "@/entities/template/model/postLimit";
+import { MAX_STORED_POSTS } from "@/entities/template/model/postLimit";
 
 export default function BottomCta({
   selectedTemplate,
@@ -63,7 +60,7 @@ export default function BottomCta({
           </div>
         </div>
         <Button
-          onClick={() => void handleGenerateArticle()}
+          onClick={handleGenerateArticle}
           className="font-bold shadow-lg bg-amber-500 hover:bg-amber-600 transition-all text-white">
           AI 글 생성하기
         </Button>

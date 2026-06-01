@@ -10,26 +10,15 @@ import {
 } from "@/shared/lib/blogGenerationPrompt";
 import { gateStoredPostLimitForAi } from "@/entities/template/api/gateStoredPostLimitForAi";
 import { getGeminiApiKey, getGeminiModel } from "@/shared/lib/geminiEnv";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
 const isDev = process.env.NODE_ENV === "development";
 
-async function createGeminiModel(styleKey: string) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY_NOT_SET");
-  }
-
-  const genAI = new GoogleGenerativeAI(apiKey);
-  return genAI.getGenerativeModel({
-    model: getGeminiModel(),
-    systemInstruction: getSystemPrompt(styleKey),
-    generationConfig: {
-      maxOutputTokens: 2000,
-      responseMimeType: "application/json",
-    },
-  });
+function isClientAbort(request: NextRequest, error: unknown): boolean {
+  return (
+    request.signal.aborted ||
+    (error instanceof Error && error.name === "AbortError")
+  );
 }
 
 export async function POST(request: NextRequest) {
@@ -48,6 +37,9 @@ export async function POST(request: NextRequest) {
       parseBlogGenerationBody(body as Record<string, unknown>);
 
     const limitGate = await gateStoredPostLimitForAi();
+    if (request.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
     if (!limitGate.ok) {
       return NextResponse.json(
         { error: limitGate.error },
@@ -66,11 +58,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const model = await createGeminiModel(styleKey);
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
-    const completion = await model.generateContent(userPrompt);
-    const content = completion.response.text()?.trim();
-    const result = parseModelJsonOutput(content ?? "");
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${getGeminiModel()}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: request.signal,
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: getSystemPrompt(styleKey) }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: userPrompt }],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 2000,
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
+
+    if (request.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
+
+    if (!res.ok) {
+      throw new Error(`Gemini HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const content =
+      data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const result = parseModelJsonOutput(content);
     const keywordsResult = normalizeKeywords(result);
 
     return NextResponse.json({
@@ -78,6 +102,10 @@ export async function POST(request: NextRequest) {
       keywords: keywordsResult,
     });
   } catch (error) {
+    if (isClientAbort(request, error)) {
+      return new Response(null, { status: 499 });
+    }
+
     console.error("Gemini API Error:", error);
     const message = error instanceof Error ? error.message : String(error);
     const status = isAiClientErrorMessage(message) ? 400 : 500;

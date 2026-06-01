@@ -1,8 +1,6 @@
 import { TEMPLATES } from "@/entities/template/config/Template";
 
-const ALLOWED_TEMPLATE_TYPE = new Set(
-  TEMPLATES.map((t) => t.id as string),
-);
+const ALLOWED_TEMPLATE_TYPE = new Set(TEMPLATES.map((t) => t.id as string));
 
 const TITLE_MAX = 500;
 const CONTENT_MAX = 500_000;
@@ -16,11 +14,17 @@ export type ValidatedPostInsert = {
   template_type: string;
 };
 
-export function validatePostInsertBody(body: unknown):
+export function validatePostInsertBody(
+  body: unknown
+):
   | { ok: true; value: ValidatedPostInsert }
   | { ok: false; message: string; status: number } {
   if (body === null || typeof body !== "object") {
-    return { ok: false, message: "요청 본문이 올바르지 않습니다.", status: 400 };
+    return {
+      ok: false,
+      message: "요청 본문이 올바르지 않습니다.",
+      status: 400,
+    };
   }
 
   const o = body as Record<string, unknown>;
@@ -43,7 +47,11 @@ export function validatePostInsertBody(body: unknown):
   }
 
   if (typeof content !== "string") {
-    return { ok: false, message: "본문(content)은 문자열이어야 합니다.", status: 400 };
+    return {
+      ok: false,
+      message: "본문(content)은 문자열이어야 합니다.",
+      status: 400,
+    };
   }
   if (content.length > CONTENT_MAX) {
     return {
@@ -66,7 +74,11 @@ export function validatePostInsertBody(body: unknown):
   const kw: string[] = [];
   for (const item of keywords) {
     if (typeof item !== "string") {
-      return { ok: false, message: "키워드 항목은 문자열이어야 합니다.", status: 400 };
+      return {
+        ok: false,
+        message: "키워드 항목은 문자열이어야 합니다.",
+        status: 400,
+      };
     }
     const s = item.trim();
     if (s.length > KEYWORD_LEN_MAX) {
