@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
 
     const limitGate = await gateStoredPostLimitForAi();
     if (request.signal.aborted) {
+      if (isDev) console.info("[gemini] aborted after limit gate");
       return new Response(null, { status: 499 });
     }
     if (!limitGate.ok) {

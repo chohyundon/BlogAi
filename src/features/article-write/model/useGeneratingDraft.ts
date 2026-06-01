@@ -17,6 +17,10 @@ import {
 import { useArticleGeneration } from "@/features/article-write/model/useArticleGeneration";
 import type { GeneratingDraftPhase } from "@/features/article-write/model/generatingDraftPhase";
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 export function useGeneratingDraft() {
   const router = useRouter();
   const [payload] = useState<WriteGeneratingPayload | null>(() =>
@@ -27,6 +31,7 @@ export function useGeneratingDraft() {
     useState<GeneratedArticle | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const saveStartedRef = useRef(false);
+  const activeSaveAbortRef = useRef<AbortController | null>(null);
 
   const { article, error: generationError } = useArticleGeneration(
     payload,
@@ -34,12 +39,19 @@ export function useGeneratingDraft() {
   );
 
   const navigateAfterSave = useCallback(
-    (postId?: string) => {
+    (postId?: string, signal?: AbortSignal) => {
+      if (signal?.aborted) return;
       toast.success("글이 성공적으로 저장되었습니다!");
       router.push(postId ? `/post/${postId}` : "/mypage");
     },
     [router]
   );
+
+  useEffect(() => {
+    return () => {
+      activeSaveAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (!payload) {
@@ -60,23 +72,34 @@ export function useGeneratingDraft() {
     saveStartedRef.current = true;
     setGeneratedArticle(article);
 
+    const controller = new AbortController();
+    activeSaveAbortRef.current = controller;
+
     const runAutoSave = async () => {
       try {
         setPhase("saving");
         const { postId } = await saveGeneratedArticle(
           article,
-          payload.selectedTemplate
+          payload.selectedTemplate,
+          { signal: controller.signal }
         );
-        navigateAfterSave(postId);
+        navigateAfterSave(postId, controller.signal);
       } catch (error) {
+        if (isAbortError(error) || controller.signal.aborted) return;
         setPhase("error");
         setErrorMessage(
           formatSaveErrorMessage(error, "글 생성 또는 저장에 실패했습니다.")
         );
+      } finally {
+        if (activeSaveAbortRef.current === controller) {
+          activeSaveAbortRef.current = null;
+        }
       }
     };
 
     void runAutoSave();
+
+    return () => controller.abort();
   }, [article, payload, navigateAfterSave]);
 
   const handleSave = async () => {
@@ -85,14 +108,20 @@ export function useGeneratingDraft() {
     const sessionPayload = peekWriteGeneratingPayload();
     if (!sessionPayload) return;
 
+    const controller = new AbortController();
+    activeSaveAbortRef.current = controller;
+
     try {
       setPhase("saving");
       const { postId } = await saveGeneratedArticle(
         generatedArticle,
-        sessionPayload.selectedTemplate
+        sessionPayload.selectedTemplate,
+        { signal: controller.signal }
       );
-      navigateAfterSave(postId);
+      navigateAfterSave(postId, controller.signal);
     } catch (error) {
+      if (isAbortError(error) || controller.signal.aborted) return;
+
       setPhase("done");
 
       if (error instanceof StoredPostLimitError) {
@@ -100,6 +129,10 @@ export function useGeneratingDraft() {
       } else {
         const errorMsg = formatSaveErrorMessage(error, "저장에 실패했습니다.");
         toast.error(`저장 실패: ${errorMsg}`);
+      }
+    } finally {
+      if (activeSaveAbortRef.current === controller) {
+        activeSaveAbortRef.current = null;
       }
     }
   };
