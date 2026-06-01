@@ -1,6 +1,7 @@
 import { createClient } from "@/shared/api/supabase/client";
 import {
   isAtStoredPostLimit,
+  MAX_STORED_POSTS,
   StoredPostLimitError,
 } from "@/entities/template/model/postLimit";
 
@@ -35,9 +36,10 @@ export const getAllTemplates = async () => {
   return data ?? [];
 };
 
-export async function ensureUnderStoredPostLimit(): Promise<void> {
+export async function ensureUnderStoredPostLimit(): Promise<string> {
   const templates = await getAllTemplates();
-  if (isAtStoredPostLimit(templates.length)) {
-    throw new StoredPostLimitError();
+  if (templates.length >= MAX_STORED_POSTS) {
+    return "최대 10개의 포스트만 저장할 수 있습니다. 기존 글을 정리한 뒤 다시 시도해 주세요.";
   }
+  return "";
 }

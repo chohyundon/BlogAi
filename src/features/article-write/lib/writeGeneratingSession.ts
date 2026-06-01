@@ -21,9 +21,11 @@ function isPayload(v: unknown): v is WriteGeneratingPayload {
 
 /** 생성 페이지로 넘기기 전에 호출 */
 /** 세션에다가 저장하는 함수 */
-export function saveWriteGeneratingPayload(p: WriteGeneratingPayload): void {
+export function saveWriteGeneratingPayload(
+  payload: WriteGeneratingPayload
+): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(WRITE_GENERATING_SESSION_KEY, JSON.stringify(p));
+  sessionStorage.setItem(WRITE_GENERATING_SESSION_KEY, JSON.stringify(payload));
 }
 
 /** 세션에서 읽기만 함 (생성 완료·오류 시 clearWriteGeneratingPayload 로 비움) */

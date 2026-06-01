@@ -9,8 +9,8 @@ export type GateStoredPostLimitForAiResult =
   | { ok: false; status: 401 | 403 | 500; error: string };
 
 /**
- * AI 글 생성(SSE 포함) 전에 세션 사용자 기준 저장 포스트 개수를 검사한다.
- * 미로그인·한도 초과 시 스트림을 열지 않고 JSON으로 막는다.
+ * AI 글 생성 전에 세션 사용자 기준 저장 포스트 개수를 검사한다.
+ * 미로그인·한도 초과 시 JSON 에러로 막는다.
  */
 export async function gateStoredPostLimitForAi(): Promise<GateStoredPostLimitForAiResult> {
   const supabase = await createClient();

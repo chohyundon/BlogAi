@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       { error: "요청 본문이 올바른 JSON이 아닙니다." },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   if (!validated.ok) {
     return NextResponse.json(
       { error: validated.message },
-      { status: validated.status },
+      { status: validated.status }
     );
   }
 
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   if (authError || !user) {
     return NextResponse.json(
       { error: "인증이 필요합니다. 다시 로그인해 주세요." },
-      { status: 401 },
+      { status: 401 }
     );
   }
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         error: "글 저장에 실패했습니다.",
         ...(isDev ? { details: error.message } : {}),
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 

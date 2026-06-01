@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
 import { saveWriteGeneratingPayload } from "@/features/article-write/lib/writeGeneratingSession";
-import {
-  ensureUnderStoredPostLimit,
-} from "@/entities/template/api/getTemplate";
+import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
 import {
   MAX_STORED_POSTS,
   StoredPostLimitError,
@@ -29,15 +27,14 @@ export default function BottomCta({
     }
 
     try {
-      await ensureUnderStoredPostLimit();
-    } catch (e) {
-      if (e instanceof StoredPostLimitError) {
-        toast.error(e.message);
+      // 포스트 저장 가능 개수 확인
+      const errorMessage = await ensureUnderStoredPostLimit();
+      if (errorMessage) {
+        toast.error(errorMessage);
         return;
       }
-      toast.error(
-        "저장 가능한 포스트 개수를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."
-      );
+    } catch (error) {
+      toast.error(error as string);
       return;
     }
 
@@ -60,8 +57,8 @@ export default function BottomCta({
               생성할 준비가 되셨나요?
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              저장 가능: 포스트 최대 {MAX_STORED_POSTS}개까지. 생성 화면에서
-              초안이 실시간으로 작성됩니다.
+              저장 가능: 포스트 최대 {MAX_STORED_POSTS}개까지. 생성 후 자동으로
+              저장됩니다.
             </p>
           </div>
         </div>
