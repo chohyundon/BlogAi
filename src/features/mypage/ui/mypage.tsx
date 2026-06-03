@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import DeleteModal from "@/features/delete-template/ui/DeleteModal";
 import { useRouter } from "next/navigation";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import { useFilterStore } from "@/features/mypage/model/FilterStore";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
 import { deleteTemplate } from "@/entities/template/api/deleteTemplate";
@@ -16,19 +16,20 @@ import {
   sortPostsByCreatedDesc,
 } from "@/features/mypage/lib/postList";
 import {
-  invalidateUserData,
   useQueryUserData,
+  invalidateUserData,
 } from "@/entities/user/api/queryUserData";
 import { useQueryClient } from "@tanstack/react-query";
 
 export default function MypageScreen() {
-  const queryClient = useQueryClient();
   const modalRef = useRef<HTMLDivElement>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const queryClient = useQueryClient();
 
   const selectedTemplateType = useFilterStore(
     (state) => state.selectedTemplateType
@@ -47,28 +48,8 @@ export default function MypageScreen() {
   };
 
   const handleConfirmDelete = async (id: string) => {
-    const { error } = await deleteTemplate(id);
-
-    if (error) {
-      toast.error(error);
-    } else {
-      toast.success("포스트가 삭제되었습니다.");
-      if (user?.id) {
-        await invalidateUserData(queryClient, user.id);
-      }
-      setCurrentPage((page) => {
-        const nextFiltered = filterPostsByTypeAndSearch(
-          (templatesData ?? []).filter((t) => t.id !== id),
-          selectedTemplateType,
-          searchQuery
-        );
-        const nextTotalPages = Math.max(
-          1,
-          Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
-        );
-        return Math.min(page, nextTotalPages - 1);
-      });
-    }
+    await deleteTemplate(id);
+    await invalidateUserData(queryClient, user?.id ?? "");
     setDeleteTargetId(null);
   };
 
