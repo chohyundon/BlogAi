@@ -13,7 +13,6 @@ export const getTemplate = async (templateId: string) => {
   return data;
 };
 
-/** 현재 로그인 사용자의 글만 조회(한도·작성 플로우용). 비로그인 시 빈 배열 */
 export const getAllTemplates = async () => {
   const supabase = await createClient();
   const {

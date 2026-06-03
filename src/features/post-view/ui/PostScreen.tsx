@@ -9,20 +9,15 @@ import { prism } from "react-syntax-highlighter/dist/esm/styles/prism";
 import "@/features/post-view/ui/markDown.css";
 import { ChevronRight } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  invalidatePost,
-  useQueryPost,
-} from "@/features/post-view/lib/postWrite";
-import { updatePost } from "@/features/post-view/lib/postEdit";
+import { useQueryPost } from "@/features/post-view/lib/postWrite";
+import { useUpdatePost } from "@/features/post-view/lib/useUpdatePost";
 import PostButton from "@/features/post-view/ui/PostButton";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
-import { invalidateUserData } from "@/entities/user/api/queryUserData";
 
 export default function PostScreen({ postId }: { postId?: string }) {
-  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const { data, isLoading, isError, error } = useQueryPost(postId);
+  const updateMutation = useUpdatePost(postId, user?.id);
 
   const [title, setTitle] = useState("기술 블로그 포스트 - 2024 AI 트렌드");
   const [content, setContent] = useState("");
@@ -35,20 +30,21 @@ export default function PostScreen({ postId }: { postId?: string }) {
     setTemplateType(data.template_type);
   }, [data]);
 
-  const handleEdit = async () => {
+  const handleEdit = () => {
     if (!postId) return;
-    try {
-      await updatePost(postId, content, title);
-      toast.success("포스트가 수정되었습니다.");
-      await Promise.all([
-        invalidatePost(queryClient, postId),
-        user?.id
-          ? invalidateUserData(queryClient, user.id)
-          : Promise.resolve(),
-      ]);
-    } catch {
-      toast.error("포스트 수정에 실패했습니다.");
-    }
+    updateMutation.mutate(
+      { content, title },
+      {
+        onSuccess: () => {
+          toast.success("포스트가 수정되었습니다.");
+        },
+        onError: (err) => {
+          toast.error(
+            err instanceof Error ? err.message : "포스트 수정에 실패했습니다."
+          );
+        },
+      }
+    );
   };
 
   const handleDownload = () => {
@@ -114,7 +110,11 @@ export default function PostScreen({ postId }: { postId?: string }) {
         />
       </div>
       <div className="flex flex-wrap items-center mt-4 justify-between gap-4 px-4 py-2 bg-navy-900 border border-navy-700 rounded-t-xl">
-        <PostButton handleDownload={handleDownload} handleEdit={handleEdit} />
+        <PostButton
+          handleDownload={handleDownload}
+          handleEdit={handleEdit}
+          isSaving={updateMutation.isPending}
+        />
         <ToastContainer
           position="top-right"
           autoClose={2000}

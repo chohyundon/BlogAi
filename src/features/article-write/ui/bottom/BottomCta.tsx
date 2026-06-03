@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
 import { saveWriteGeneratingPayload } from "@/features/article-write/lib/writeGeneratingSession";
-import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
+import { useStoredPostLimitCheck } from "@/entities/template/api/queryEnsure";
 import { MAX_STORED_POSTS } from "@/entities/template/model/postLimit";
+import { useAuthStore } from "@/features/auth/model/AuthStore";
 
 export default function BottomCta({
   selectedTemplate,
@@ -16,22 +17,28 @@ export default function BottomCta({
   keywords,
 }: BottomCtaProps) {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const { isChecking, isAtLimit, limitMessage, canSave } =
+    useStoredPostLimitCheck(user?.id);
 
-  const handleGenerateArticle = async () => {
+  const handleGenerateArticle = () => {
     if (blogTitleValue.trim() === "" || blogDescriptionValue.trim() === "") {
       toast.warning("블로그 제목 아이디어, 상세 설명을 입력해 주세요.");
       return;
     }
 
-    try {
-      // 포스트 저장 가능 개수 확인
-      const errorMessage = await ensureUnderStoredPostLimit();
-      if (errorMessage) {
-        toast.error(errorMessage);
-        return;
-      }
-    } catch (error) {
-      toast.error(error as string);
+    if (!user) {
+      toast.warning("글을 생성하려면 로그인이 필요합니다.");
+      return;
+    }
+
+    if (isChecking) {
+      toast.info("저장 가능 개수를 확인하는 중입니다.");
+      return;
+    }
+
+    if (isAtLimit || !canSave) {
+      toast.error(limitMessage);
       return;
     }
 
