@@ -1,5 +1,5 @@
 import { FEATURES } from "@/shared/config/Main";
-import FeatureCard from "../card/FeatureCard";
+import FeatureCard from "@/widgets/landing/card/FeatureCard";
 
 export default function FeatureSection() {
   return (

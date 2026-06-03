@@ -2,7 +2,7 @@
 
 import type { DatabaseDocument } from "@/shared/types/database";
 import { Pencil, Trash2 } from "lucide-react";
-import TemplateTypeBadge from "./TemplateTypeBadge";
+import TemplateTypeBadge from "@/features/mypage/ui/TemplateTypeBadge";
 
 type MypagePostsTableProps = {
   items: DatabaseDocument[];

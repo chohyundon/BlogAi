@@ -3,13 +3,13 @@
 import { useState } from "react";
 import Button from "@/shared/ui/Button";
 import { TEMPLATES } from "@/entities/template/config/Template";
-import WriteSectionHeader from "./Header/WriteSectionHeader";
-import WriteInfoToolTip from "./infoTooltip/WriteInfoToolTip";
+import WriteSectionHeader from "@/features/article-write/ui/Header/WriteSectionHeader";
+import WriteInfoToolTip from "@/features/article-write/ui/infoTooltip/WriteInfoToolTip";
 import { CheckCircle } from "lucide-react";
-import { NAVY, dashboardWriteStyles } from "./dashboardWriteStyles";
+import { NAVY, dashboardWriteStyles } from "@/features/article-write/ui/dashboardWriteStyles";
 import { useRouter } from "next/navigation";
-import WriteKeyWord from "./keyword/WriteKeyWord";
-import BottomCta from "./bottom/BottomCta";
+import WriteKeyWord from "@/features/article-write/ui/keyword/WriteKeyWord";
+import BottomCta from "@/features/article-write/ui/bottom/BottomCta";
 const { inputBase, sectionCard, templateCardBase } = dashboardWriteStyles;
 
 export default function DashBoardWrite() {

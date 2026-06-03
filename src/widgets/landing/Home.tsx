@@ -5,9 +5,9 @@ import { useState } from "react";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
 import Footer from "@/shared/ui/Footer";
 import AuthModal from "@/features/auth/ui/AuthModal";
-import HomeTitleSection from "./title/HomeTitleSection";
-import BottomCta from "./bottom/BottomCta";
-import FeatureSection from "./feature/FeatureSection";
+import HomeTitleSection from "@/widgets/landing/title/HomeTitleSection";
+import BottomCta from "@/widgets/landing/bottom/BottomCta";
+import FeatureSection from "@/widgets/landing/feature/FeatureSection";
 
 export default function Home() {
   const router = useRouter();

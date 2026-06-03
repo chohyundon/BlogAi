@@ -1,8 +1,8 @@
 "use client";
 
 import { X } from "lucide-react";
-import WriteSectionHeader from "../Header/WriteSectionHeader";
-import { dashboardWriteStyles } from "../dashboardWriteStyles";
+import WriteSectionHeader from "@/features/article-write/ui/Header/WriteSectionHeader";
+import { dashboardWriteStyles } from "@/features/article-write/ui/dashboardWriteStyles";
 import { useState } from "react";
 import { RECOMMENDED_KEYWORDS } from "@/shared/config/Write";
 import Button from "@/shared/ui/Button";

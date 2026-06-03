@@ -1,5 +1,5 @@
 import { ArrowRight, Bot, Sparkle, Play } from "lucide-react";
-import ProductMockup from "../product/ProductMock";
+import ProductMockup from "@/widgets/landing/product/ProductMock";
 
 type HomeTitleSectionProps = {
   onStartFree: () => void;

@@ -1,4 +1,4 @@
-import type { PostArticleInput } from "../model/postArticleInput";
+import type { PostArticleInput } from "@/entities/article/model/postArticleInput";
 
 export const postOpenAi = async (data: PostArticleInput) => {
   const response = await fetch("/api/openai", {

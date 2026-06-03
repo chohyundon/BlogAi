@@ -1,6 +1,6 @@
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
-import type { PostArticleInput } from "../model/postArticleInput";
+import type { PostArticleInput } from "@/entities/article/model/postArticleInput";
 
 function endpoint(): "/api/openai" | "/api/gemini" {
   if (process.env.NEXT_PUBLIC_AI_PROVIDER === "gemini") {

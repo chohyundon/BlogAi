@@ -1,7 +1,7 @@
 "use client";
 
 import { TEMPLATE_ID } from "@/entities/template/model/template";
-import DashBoardHeader from "./DashBoardHeader";
+import DashBoardHeader from "@/features/dashboard/ui/DashBoardHeader";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";

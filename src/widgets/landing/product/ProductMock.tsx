@@ -1,6 +1,6 @@
-import SuggestCard from "../card/SuggestCard";
-import DemoWindowChrome from "../demo/DemoWindow";
-import { DemoEditorPane, DemoPreviewPane } from "../demo/DemoWindow";
+import SuggestCard from "@/widgets/landing/card/SuggestCard";
+import DemoWindowChrome from "@/widgets/landing/demo/DemoWindow";
+import { DemoEditorPane, DemoPreviewPane } from "@/widgets/landing/demo/DemoWindow";
 
 export default function ProductMockup() {
   return (

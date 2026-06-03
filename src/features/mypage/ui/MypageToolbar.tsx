@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import type { DatabaseDocument } from "@/shared/types/database";
-import FilterModal from "./FilterModal";
+import FilterModal from "@/features/mypage/ui/FilterModal";
 import Button from "@/shared/ui/Button";
 
 type MypageToolbarProps = {

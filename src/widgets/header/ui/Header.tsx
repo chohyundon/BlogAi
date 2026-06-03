@@ -7,7 +7,7 @@ import { DashBoardSideList } from "@/shared/config/DashBoardSideList";
 import { createClient } from "@/shared/api/supabase/client";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { useEffect, useRef, useState } from "react";
-import HeaderModal from "./HeaderModal";
+import HeaderModal from "@/widgets/header/ui/HeaderModal";
 import AuthModal from "@/features/auth/ui/AuthModal";
 
 export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
