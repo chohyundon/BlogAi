@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import path from "node:path";
 import "@/app/globals.css";
 import { Providers } from "@/app/providers";
 import AppShell from "@/widgets/app-shell/ui/AppShell";
 
 const pretendard = localFont({
-  src: path.join(process.cwd(), "public/fonts/PretendardVariable.woff2"),
+  src: "../../public/fonts/PretendardVariable.woff2",
   display: "swap",
   variable: "--font-pretendard",
 });
