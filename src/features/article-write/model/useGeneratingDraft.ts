@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
+import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { invalidateUserData } from "@/entities/user/api/queryUserData";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import { StoredPostLimitError } from "@/entities/template/model/postLimit";
 import {
@@ -23,6 +26,8 @@ function isAbortError(error: unknown): boolean {
 
 export function useGeneratingDraft() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const [payload] = useState<WriteGeneratingPayload | null>(() =>
     peekWriteGeneratingPayload()
   );
@@ -39,12 +44,15 @@ export function useGeneratingDraft() {
   );
 
   const navigateAfterSave = useCallback(
-    (postId?: string, signal?: AbortSignal) => {
+    async (postId?: string, signal?: AbortSignal) => {
       if (signal?.aborted) return;
+      if (user?.id) {
+        await invalidateUserData(queryClient, user.id);
+      }
       toast.success("글이 성공적으로 저장되었습니다!");
       router.push(postId ? `/post/${postId}` : "/mypage");
     },
-    [router]
+    [router, queryClient, user?.id]
   );
 
   useEffect(() => {
@@ -83,7 +91,7 @@ export function useGeneratingDraft() {
           payload.selectedTemplate,
           { signal: controller.signal }
         );
-        navigateAfterSave(postId, controller.signal);
+        await navigateAfterSave(postId, controller.signal);
       } catch (error) {
         if (isAbortError(error) || controller.signal.aborted) return;
         setPhase("error");
@@ -118,7 +126,7 @@ export function useGeneratingDraft() {
         sessionPayload.selectedTemplate,
         { signal: controller.signal }
       );
-      navigateAfterSave(postId, controller.signal);
+      await navigateAfterSave(postId, controller.signal);
     } catch (error) {
       if (isAbortError(error) || controller.signal.aborted) return;
 

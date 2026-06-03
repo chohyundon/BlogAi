@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DeleteModal from "@/features/delete-template/ui/DeleteModal";
 import { useRouter } from "next/navigation";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { useFilterStore } from "@/features/mypage/model/FilterStore";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
-import { deleteTemplate } from "@/entities/template/api/deleteTemplate";
+import { useDeleteTemplate } from "@/entities/template/api/useDeleteTemplate";
 import { TEMPLATES_PER_PAGE } from "@/entities/template/config/Template";
 import MypageToolbar from "@/features/mypage/ui/MypageToolbar";
 import MypagePostsTable from "@/features/mypage/ui/MypagePostsTable";
@@ -17,9 +17,10 @@ import {
 } from "@/features/mypage/lib/postList";
 import {
   useQueryUserData,
-  invalidateUserData,
+  userDataQueryKey,
 } from "@/entities/user/api/queryUserData";
 import { useQueryClient } from "@tanstack/react-query";
+import type { DatabaseDocument } from "@/shared/types/database";
 
 export default function MypageScreen() {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -29,14 +30,18 @@ export default function MypageScreen() {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const queryClient = useQueryClient();
-
   const selectedTemplateType = useFilterStore(
     (state) => state.selectedTemplateType
   );
   const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const { data: templatesData = [], isLoading } = useQueryUserData(user?.id);
+  const deleteMutation = useDeleteTemplate(user?.id);
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedTemplateType]);
 
   const openDeleteModal = (id: string) => {
     setDeleteTargetId(id);
@@ -48,9 +53,37 @@ export default function MypageScreen() {
   };
 
   const handleConfirmDelete = async (id: string) => {
-    await deleteTemplate(id);
-    await invalidateUserData(queryClient, user?.id ?? "");
-    setDeleteTargetId(null);
+    const postId = String(id);
+    try {
+      await deleteMutation.mutateAsync(postId);
+      toast.success("포스트가 삭제되었습니다.");
+      setCurrentPage((page) => {
+        const list =
+          (user?.id
+            ? queryClient.getQueryData<DatabaseDocument[]>(
+                userDataQueryKey(user.id)
+              )
+            : null) ??
+          templatesData ??
+          [];
+        const nextFiltered = filterPostsByTypeAndSearch(
+          list,
+          selectedTemplateType,
+          searchQuery
+        );
+        const nextTotalPages = Math.max(
+          1,
+          Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
+        );
+        return Math.min(page, nextTotalPages - 1);
+      });
+      setDeleteTargetId(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "포스트 삭제에 실패했습니다."
+      );
+      throw err;
+    }
   };
 
   const filteredTemplates = filterPostsByTypeAndSearch(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function DeleteModal({
   targetId,
@@ -11,8 +11,10 @@ export default function DeleteModal({
   targetId: string | null;
   setDeleteModalOpen: (open: boolean) => void;
   modalRef: React.RefObject<HTMLDivElement>;
-  onConfirm: (id: string) => void;
+  onConfirm: (id: string) => void | Promise<void>;
 }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -26,11 +28,17 @@ export default function DeleteModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [modalRef, setDeleteModalOpen]);
 
-  const handleDelete = () => {
-    if (targetId) {
-      onConfirm(targetId);
+  const handleDelete = async () => {
+    if (!targetId || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await onConfirm(targetId);
+      setDeleteModalOpen(false);
+    } catch {
+      // 토스트는 MypageScreen에서 처리
+    } finally {
+      setIsDeleting(false);
     }
-    setDeleteModalOpen(false);
   };
 
   return (
@@ -51,13 +59,16 @@ export default function DeleteModal({
         </div>
         <div className="flex gap-2 px-6 py-4">
           <button
-            className="w-full py-3 px-4 rounded-xl bg-blue-800 text-white font-medium hover:opacity-80 transition-colors"
+            type="button"
+            disabled={isDeleting}
+            className="w-full py-3 px-4 rounded-xl bg-blue-800 text-white font-medium hover:opacity-80 transition-colors disabled:opacity-50"
             onClick={handleDelete}>
-            삭제
+            {isDeleting ? "삭제 중..." : "삭제"}
           </button>
           <button
             type="button"
-            className="w-full py-3 px-4 rounded-xl bg-navy-600 text-white font-medium hover:opacity-80 transition-colors"
+            disabled={isDeleting}
+            className="w-full py-3 px-4 rounded-xl bg-navy-600 text-white font-medium hover:opacity-80 transition-colors disabled:opacity-50"
             onClick={() => setDeleteModalOpen(false)}>
             취소
           </button>

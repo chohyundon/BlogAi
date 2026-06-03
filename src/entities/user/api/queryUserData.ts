@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 import { getUserData } from "@/entities/user/api/getUserData";
+import type { DatabaseDocument } from "@/shared/types/database";
 
 export const userDataQueryKey = (userId: string) =>
   ["userData", userId] as const;
@@ -11,11 +12,14 @@ export async function invalidateUserData(
   queryClient: QueryClient,
   userId: string
 ) {
-  await queryClient.invalidateQueries({ queryKey: userDataQueryKey(userId) });
+  await queryClient.invalidateQueries({
+    queryKey: userDataQueryKey(userId),
+    refetchType: "active",
+  });
 }
 
 export function useQueryUserData(userId: string | undefined) {
-  return useQuery({
+  return useQuery<DatabaseDocument[] | null>({
     queryKey: userDataQueryKey(userId ?? ""),
     queryFn: () => getUserData(userId!),
     enabled: Boolean(userId),

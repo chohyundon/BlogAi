@@ -16,9 +16,12 @@ import {
 } from "@/features/post-view/lib/postWrite";
 import { updatePost } from "@/features/post-view/lib/postEdit";
 import PostButton from "@/features/post-view/ui/PostButton";
+import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { invalidateUserData } from "@/entities/user/api/queryUserData";
 
 export default function PostScreen({ postId }: { postId?: string }) {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const { data, isLoading, isError, error } = useQueryPost(postId);
 
   const [title, setTitle] = useState("기술 블로그 포스트 - 2024 AI 트렌드");
@@ -37,7 +40,12 @@ export default function PostScreen({ postId }: { postId?: string }) {
     try {
       await updatePost(postId, content, title);
       toast.success("포스트가 수정되었습니다.");
-      await invalidatePost(queryClient, postId);
+      await Promise.all([
+        invalidatePost(queryClient, postId),
+        user?.id
+          ? invalidateUserData(queryClient, user.id)
+          : Promise.resolve(),
+      ]);
     } catch {
       toast.error("포스트 수정에 실패했습니다.");
     }
@@ -96,7 +104,14 @@ export default function PostScreen({ postId }: { postId?: string }) {
           {templateType}
         </span>
         <ChevronRight className="size-4 text-slate-400" />
-        <span className="text-white text-sm font-semibold">{title}</span>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="flex-1 min-w-0 max-w-md bg-transparent border-b border-navy-600 focus:border-amber-500/50 focus:outline-none text-white text-sm font-semibold py-0.5"
+          placeholder="제목을 입력하세요"
+          aria-label="포스트 제목"
+        />
       </div>
       <div className="flex flex-wrap items-center mt-4 justify-between gap-4 px-4 py-2 bg-navy-900 border border-navy-700 rounded-t-xl">
         <PostButton handleDownload={handleDownload} handleEdit={handleEdit} />
