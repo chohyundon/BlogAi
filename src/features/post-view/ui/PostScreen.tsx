@@ -1,52 +1,45 @@
 "use client";
 
-import { createClient } from "@/shared/api/supabase/client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { prism } from "react-syntax-highlighter/dist/esm/styles/prism";
-import "./markDown.css";
-import { ChevronRight, Sparkles, FileDown } from "lucide-react";
+import "@/features/post-view/ui/markDown.css";
+import { ChevronRight } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
-type PostScreenProps = { postId?: string };
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  invalidatePost,
+  useQueryPost,
+} from "@/features/post-view/lib/postWrite";
+import { updatePost } from "@/features/post-view/lib/postEdit";
+import PostButton from "@/features/post-view/ui/PostButton";
 
-export default function PostScreen({ postId }: PostScreenProps) {
-  const supabase = createClient();
-  const [title, setTitle] = useState<string>(
-    "기술 블로그 포스트 - 2024 AI 트렌드"
-  );
-  const [content, setContent] = useState<string>("");
-  const [templateType, setTemplateType] = useState<string>("");
+export default function PostScreen({ postId }: { postId?: string }) {
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, error } = useQueryPost(postId);
+
+  const [title, setTitle] = useState("기술 블로그 포스트 - 2024 AI 트렌드");
+  const [content, setContent] = useState("");
+  const [templateType, setTemplateType] = useState("");
 
   useEffect(() => {
-    if (!postId) return;
-    const fetchPost = async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("title, content, template_type")
-        .eq("id", postId)
-        .single();
-      if (!error && data) {
-        setTitle(data.title ?? "기술 블로그 포스트 - 2024 AI 트렌드");
-        setContent(data.content ?? "");
-        setTemplateType(data.template_type ?? "");
-      }
-    };
-    fetchPost();
-  }, [postId]);
+    if (!data) return;
+    setTitle(data.title);
+    setContent(data.content);
+    setTemplateType(data.template_type);
+  }, [data]);
 
   const handleEdit = async () => {
-    const { error } = await supabase
-      .from("posts")
-      .update({ content: content.trim() })
-      .eq("id", postId)
-      .select();
-    if (error) {
-      toast.error("포스트 수정에 실패했습니다.");
-    } else {
+    if (!postId) return;
+    try {
+      await updatePost(postId, content, title);
       toast.success("포스트가 수정되었습니다.");
+      await invalidatePost(queryClient, postId);
+    } catch {
+      toast.error("포스트 수정에 실패했습니다.");
     }
   };
 
@@ -62,9 +55,33 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const handleMouseUp = () => {
     const selection = window.getSelection();
     if (selection) {
-      const selectedText = selection.toString();
+      selection.toString();
     }
   };
+
+  if (isLoading) {
+    return (
+      <main className="flex-1 flex flex-col max-w-[1600px] mx-auto w-full px-4 sm:px-6 bg-navy-950 min-h-full">
+        <div className="flex items-center justify-center flex-1 py-24">
+          <p className="text-white text-lg font-semibold">로딩중...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (isError || !postId) {
+    return (
+      <main className="flex-1 flex flex-col max-w-[1600px] mx-auto w-full px-4 sm:px-6 bg-navy-950 min-h-full">
+        <div className="flex items-center justify-center flex-1 py-24">
+          <p className="text-red-300 text-sm">
+            {error instanceof Error
+              ? error.message
+              : "포스트를 불러오지 못했습니다."}
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex-1 flex flex-col max-w-[1600px] mx-auto w-full px-4 sm:px-6 bg-navy-950 min-h-full">
@@ -82,18 +99,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
         <span className="text-white text-sm font-semibold">{title}</span>
       </div>
       <div className="flex flex-wrap items-center mt-4 justify-between gap-4 px-4 py-2 bg-navy-900 border border-navy-700 rounded-t-xl">
-        <button
-          onClick={handleDownload}
-          className="flex ml-auto items-center justify-center rounded-lg h-9 px-4 bg-blue-500/15 text-blue-400 border border-blue-500/25 hover:opacity-50 cursor-pointer transition-all font-semibold text-sm">
-          <FileDown className="size-4 mr-2" />
-          <span>다운로드</span>
-        </button>
-        <button
-          onClick={handleEdit}
-          className="flex items-center justify-center rounded-lg h-9 px-4 bg-amber-500/15 text-amber-400 border border-amber-500/25 hover:opacity-50 cursor-pointer transition-all font-semibold text-sm">
-          <Sparkles className="size-4 mr-2" />
-          <span>수정하기</span>
-        </button>
+        <PostButton handleDownload={handleDownload} handleEdit={handleEdit} />
         <ToastContainer
           position="top-right"
           autoClose={2000}
