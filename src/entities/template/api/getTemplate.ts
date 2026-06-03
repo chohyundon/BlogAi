@@ -1,9 +1,5 @@
 import { createClient } from "@/shared/api/supabase/client";
-import {
-  isAtStoredPostLimit,
-  MAX_STORED_POSTS,
-  StoredPostLimitError,
-} from "@/entities/template/model/postLimit";
+import { MAX_STORED_POSTS } from "@/entities/template/model/postLimit";
 
 export const getTemplate = async (templateId: string) => {
   const supabase = await createClient();

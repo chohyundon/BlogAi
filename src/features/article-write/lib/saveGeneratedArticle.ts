@@ -36,7 +36,10 @@ export async function saveGeneratedArticle(
     throw new DOMException("Aborted", "AbortError");
   }
 
-  await ensureUnderStoredPostLimit();
+  const limitError = await ensureUnderStoredPostLimit();
+  if (limitError) {
+    throw new Error(limitError);
+  }
 
   if (signal?.aborted) {
     throw new DOMException("Aborted", "AbortError");

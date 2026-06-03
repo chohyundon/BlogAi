@@ -1,8 +1,8 @@
 # self — AI 기술 블로그 작성 플랫폼
 
-개발자가 주제·키워드·템플릿만 입력하면 AI가 **마크다운 기술 블로그 글**을 생성하고, **실시간 미리보기**와 함께 Supabase에 저장·조회할 수 있는 웹 서비스입니다.
+개발자가 주제·키워드·템플릿만 입력하면 AI가 **마크다운 기술 블로그 글**을 생성하고, Supabase에 저장·조회할 수 있는 웹 서비스입니다.
 
-Next.js App Router, Feature-Sliced Design(FSD), Gemini/OpenAI API, SSE 스트리밍을 활용한 **풀스택 사이드 프로젝트**입니다.
+Next.js App Router, Feature-Sliced Design(FSD), Gemini/OpenAI API, **AbortController 기반 요청 취소**를 활용한 **풀스택 사이드 프로젝트**입니다.
 
 ---
 
@@ -11,7 +11,8 @@ Next.js App Router, Feature-Sliced Design(FSD), Gemini/OpenAI API, SSE 스트리
 | 기능 | 설명 |
 |------|------|
 | **AI 글 생성** | Gemini 또는 OpenAI로 제목·본문·키워드·메타 설명을 JSON 형태로 생성 |
-| **실시간 스트리밍 미리보기** | 글 생성 중 본문이 마크다운으로 타이핑되듯 표시 (SSE) |
+| **생성·저장 플로우** | `/write/generating`에서 로딩 → 자동 저장 → 상세 페이지 이동 |
+| **페이지 이탈 시 취소** | `AbortController`로 AI 생성·DB 저장 요청을 연쇄 중단 |
 | **템플릿 기반 작성** | TIL, 트러블슈팅, 딥다이브 등 스타일별 시스템 프롬프트 적용 |
 | **마크다운 렌더링** | `react-markdown` + GFM + 코드 하이라이팅(SyntaxHighlighter) |
 | **글 저장·관리** | Supabase에 포스트 저장, 마이페이지·상세 페이지에서 조회 |
@@ -33,46 +34,42 @@ Next.js App Router, Feature-Sliced Design(FSD), Gemini/OpenAI API, SSE 스트리
 
 ---
 
-## AI 글 생성 & SSE 스트리밍 (핵심 구현)
+## AI 글 생성 & 요청 취소 (핵심 구현)
 
-글 생성 페이지(`/write/generating`)에서는 **API를 한 번만** 호출합니다.
+글 생성 페이지(`/write/generating`)에서는 **AI 생성 API를 한 번**, 완료 후 **저장 API를 한 번** 호출합니다.
 
 ```
 /write → sessionStorage에 작성 정보 저장
   → /write/generating
-  → useArticleGenerationStream (클라이언트)
-  → POST /api/gemini  (Accept: text/event-stream)
-  → Gemini generateContentStream
-  → chunk / result / done SSE 이벤트
-  → ReactMarkdown 실시간 미리보기
-  → result 수신 후 Supabase 저장 → /post/[id] 이동
+  → useArticleGeneration (클라이언트, AbortController)
+  → POST /api/gemini (JSON)
+  → Gemini REST generateContent (request.signal 연동)
+  → JSON { title, content, keywords, metaDescription }
+  → useGeneratingDraft → POST /api/supabase (AbortController)
+  → Supabase posts INSERT → /post/[id] 이동
 ```
 
-### 왜 EventSource가 아닌 fetch + SSE 파싱?
+### 페이지 이탈 시 AbortController
 
-- `EventSource`는 **GET만** 지원 → 주제·키워드·템플릿을 POST body로 넘기기 어려움
-- `fetch` + `ReadableStream`으로 **POST JSON + SSE** 조합 구현
-- `AbortController`로 페이지 이탈 시 요청 취소
+사용자가 생성·저장 중 **뒤로가기·다른 페이지 이동**을 하면 불필요한 AI 토큰 소비와 DB 저장을 막기 위해 요청을 연쇄 취소합니다.
 
-### SSE 이벤트 계약
-
-| event | 설명 |
-|-------|------|
-| `chunk` | Gemini JSON 출력 조각 → `content` 필드 추출 후 미리보기 갱신 |
-| `result` | 파싱 완료된 `{ title, content, keywords, metaDescription }` |
-| `error` | 생성 실패 메시지 |
-| `done` | 스트림 종료 (`[DONE]`) |
+| 계층 | 처리 |
+|------|------|
+| **클라이언트** | `useEffect` cleanup에서 `AbortController.abort()` — AI fetch·저장 fetch 모두 `signal` 전달 |
+| **Next.js Route** | `request.signal.aborted` 확인 후 **499** 반환 (에러 로그 없음) |
+| **Gemini upstream** | `/api/gemini`에서 Google API `fetch`에 `signal: request.signal` 전달 |
+| **중복 저장 방지** | `useRef`로 effect 재실행 시 자동 저장이 두 번 실행되지 않도록 처리 |
 
 ### 관련 파일
 
 | 파일 | 역할 |
 |------|------|
-| `src/app/api/gemini/route.ts` | SSE 스트림 생성·JSON 응답 분기 |
-| `src/features/article-write/model/useArticleGenerationStream.ts` | 클라이언트 SSE 수신·파싱 |
+| `src/app/api/gemini/route.ts` | Gemini JSON 생성, `request.signal` → upstream abort |
+| `src/app/api/supabase/route.ts` | posts INSERT, insert 전 client abort 확인 |
+| `src/features/article-write/model/useArticleGeneration.ts` | 클라이언트 AI fetch + AbortController |
+| `src/features/article-write/model/useGeneratingDraft.ts` | phase 관리, 자동 저장 + 저장 abort |
+| `src/features/article-write/lib/saveGeneratedArticle.ts` | 저장 API 호출, `signal` 전달 |
 | `src/features/article-write/ui/GeneratingDraft.tsx` | 생성·저장·리다이렉트 오케스트레이션 |
-| `src/features/article-write/ui/sse/Generation.tsx` | 실시간 미리보기 UI |
-| `src/shared/lib/sseEncode.ts` | 서버 SSE 이벤트 인코딩 |
-| `src/features/article-write/lib/extractMarkdownPreviewFromJsonStream.ts` | JSON 스트림 → content 미리보기 |
 
 ---
 
@@ -83,7 +80,7 @@ Next.js App Router, Feature-Sliced Design(FSD), Gemini/OpenAI API, SSE 스트리
 | `/` | 랜딩 페이지 |
 | `/dashboard` | 대시보드 |
 | `/write` | 블로그 작성 (템플릿·주제·키워드 입력) |
-| `/write/generating` | AI 생성 + 실시간 미리보기 + 자동 저장 |
+| `/write/generating` | AI 생성 + 자동 저장 |
 | `/post`, `/post/[id]` | 글 목록·상세 |
 | `/mypage` | 내 글 관리 |
 | `/example` | 템플릿 예시 |
@@ -92,9 +89,9 @@ Next.js App Router, Feature-Sliced Design(FSD), Gemini/OpenAI API, SSE 스트리
 
 | 경로 | 설명 |
 |------|------|
-| `POST /api/gemini` | Gemini 글 생성 (JSON 또는 SSE) |
+| `POST /api/gemini` | Gemini 글 생성 (JSON) |
 | `POST /api/openai` | OpenAI 글 생성 (JSON) |
-| `/api/supabase` | Supabase 연동 |
+| `POST /api/supabase` | Supabase posts INSERT |
 
 ---
 
@@ -109,9 +106,9 @@ src/
 ├── widgets/                # Header, Landing, AppShell 등 UI 블록
 ├── features/               # article-write, auth, post-view, mypage …
 │   └── article-write/
-│       ├── model/          # useArticleGenerationStream 등
-│       ├── lib/            # session, SSE 헬퍼
-│       └── ui/             # DashBoard, GeneratingDraft, Generation …
+│       ├── model/          # useArticleGeneration, useGeneratingDraft
+│       ├── lib/            # sessionStorage, saveGeneratedArticle
+│       └── ui/             # DashBoard, GeneratingDraft, generating/*
 ├── entities/               # article, template, user (도메인·API)
 └── shared/                 # ui, api(supabase), lib, config, types
 ```
