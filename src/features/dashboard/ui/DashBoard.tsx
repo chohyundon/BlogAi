@@ -4,45 +4,29 @@ import { TEMPLATE_ID } from "@/entities/template/model/template";
 import DashBoardHeader from "./DashBoardHeader";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import { DatabaseDocument } from "@/shared/types/database";
 import Link from "next/link";
+import type { DatabaseDocument } from "@/shared/types/database";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
-import { getUserData } from "@/entities/user/api/getUserData";
 import { TEMPLATE_IMAGES } from "@/entities/template/config/Template";
-import { recentTemplates } from "../model/RecentTemplate";
+import { recentTemplates } from "@/features/dashboard/model/RecentTemplate";
+import { useQueryUserData } from "@/entities/user/api/queryUserData";
 
 export default function DashBoard() {
-  const [templates, setTemplates] = useState<DatabaseDocument[]>([]);
   const user = useAuthStore((state) => state.user);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setTemplates([]);
-      return;
-    }
-    const getTemplates = async () => {
-      const templates = await getUserData(user.id);
-      setTemplates(templates ?? []);
-    };
-    getTemplates();
-  }, [user?.id]);
+  const { data, isLoading } = useQueryUserData(user?.id);
+  const templates: DatabaseDocument[] = data ?? [];
 
   const recentTemplatesData = recentTemplates(templates);
 
   return (
     <>
-      {/* Main Content */}
       <main className="flex-1 min-h-0 flex flex-col overflow-y-auto bg-navy-950">
         <div className="mx-auto px-8 py-10">
-          {/* PageHeading */}
           <DashBoardHeader />
-          {/* Section: Start a New Post */}
           <section className="mb-12">
             <h3 className="text-white text-xl font-bold mb-6 flex items-center gap-2">
               🚀 새 글 쓰기
             </h3>
-            {/* ImageGrid for Templates */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
               {TEMPLATE_ID.map((tpl) => (
                 <div
@@ -70,7 +54,6 @@ export default function DashBoard() {
             </div>
           </section>
 
-          {/* Section: Recent Drafts */}
           <section>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-white text-xl font-bold flex items-center gap-2">
@@ -82,7 +65,9 @@ export default function DashBoard() {
                 전체 보기
               </Link>
             </div>
-            {templates && (
+            {isLoading ? (
+              <p className="text-slate-400 text-sm">로딩 중...</p>
+            ) : (
               <div className="space-y-3">
                 <div className="flex flex-col gap-4">
                   {recentTemplatesData.length === 0 ? (
