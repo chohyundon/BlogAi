@@ -26,9 +26,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full h-screen bg-navy-950 flex flex-col overflow-hidden">
       <Header onMenuClick={() => setSidebarOpen(true)} />
-      <div className="flex-1 min-h-0 flex relative">
+      <div className="flex-1 h-full flex w-full relative">
         <Aside open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        {children}
+        <div className="flex-1">{children}</div>
       </div>
     </div>
   );
