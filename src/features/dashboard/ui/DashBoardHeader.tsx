@@ -1,21 +1,11 @@
 "use client";
 
-import Button from "@/shared/ui/Button";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
-import { useRouter } from "next/navigation";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
+import Link from "next/link";
 
 export default function DashBoardHeader() {
   const user = useAuthStore((state) => state.user);
-  const router = useRouter();
-
-  const handleWrite = () => {
-    if (user) {
-      router.push("/write");
-    } else {
-      return toast.error("로그인 후 이용해주세요.");
-    }
-  };
 
   return (
     <header className="flex flex-wrap justify-between items-end gap-6 mb-12">
@@ -33,11 +23,12 @@ export default function DashBoardHeader() {
         pauseOnHover
         theme="dark"
       />
-      <Button
-        className="font-bold shadow-lg bg-amber-500 hover:bg-amber-600 transition-all text-white"
-        onClick={handleWrite}>
+      <Link
+        className="inline-block px-4 py-2 font-bold shadow-lg bg-amber-500 hover:bg-amber-600 transition-all text-white rounded-lg"
+        href="/write"
+        aria-label="새로운 글 작성">
         새로운 글 작성
-      </Button>
+      </Link>
     </header>
   );
 }
