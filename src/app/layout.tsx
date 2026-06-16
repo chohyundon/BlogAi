@@ -11,10 +11,18 @@ const pretendard = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.blogai.store"),
   title: "BlogAi",
   description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
   icons: {
     icon: "/icon.png",
+  },
+  openGraph: {
+    images: [
+      {
+        url: "/icon.png",
+      },
+    ],
   },
 };
 
