@@ -14,13 +14,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 const isDev = process.env.NODE_ENV === "development";
 
-function isClientAbort(request: NextRequest, error: unknown): boolean {
-  return (
-    request.signal.aborted ||
-    (error instanceof Error && error.name === "AbortError")
-  );
-}
-
 export async function POST(request: NextRequest) {
   try {
     let body: unknown;
@@ -37,9 +30,6 @@ export async function POST(request: NextRequest) {
       parseBlogGenerationBody(body as Record<string, unknown>);
 
     const limitGate = await gateStoredPostLimitForAi();
-    if (request.signal.aborted) {
-      return new Response(null, { status: 499 });
-    }
     if (!limitGate.ok) {
       return NextResponse.json(
         { error: limitGate.error },
@@ -64,7 +54,6 @@ export async function POST(request: NextRequest) {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: request.signal,
         body: JSON.stringify({
           system_instruction: {
             parts: [{ text: getSystemPrompt(styleKey) }],
@@ -83,10 +72,6 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (request.signal.aborted) {
-      return new Response(null, { status: 499 });
-    }
-
     if (!res.ok) {
       throw new Error(`Gemini HTTP ${res.status}`);
     }
@@ -102,10 +87,6 @@ export async function POST(request: NextRequest) {
       keywords: keywordsResult,
     });
   } catch (error) {
-    if (isClientAbort(request, error)) {
-      return new Response(null, { status: 499 });
-    }
-
     const message = error instanceof Error ? error.message : String(error);
     const status = isAiClientErrorMessage(message) ? 400 : 500;
     return NextResponse.json(

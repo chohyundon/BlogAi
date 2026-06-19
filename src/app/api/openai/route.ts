@@ -13,6 +13,17 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
 const isDev = process.env.NODE_ENV === "development";
+const COMPLETION_TOKEN_LIMIT = 4000;
+
+/** gpt-5 / o-series 등 신규 모델은 max_tokens 대신 max_completion_tokens 사용 */
+function completionTokenParam(model: string) {
+  const usesCompletionTokens =
+    /^gpt-5/i.test(model) || /^o\d/i.test(model) || /^gpt-4\.1/i.test(model);
+
+  return usesCompletionTokens
+    ? { max_completion_tokens: COMPLETION_TOKEN_LIMIT }
+    : { max_tokens: COMPLETION_TOKEN_LIMIT };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,14 +62,15 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = getSystemPrompt(styleKey);
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
+    const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: 2000,
+      ...completionTokenParam(model),
     });
 
     const content = completion.choices[0]?.message?.content?.trim();

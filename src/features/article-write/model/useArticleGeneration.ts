@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import type { PostArticleInput } from "@/entities/article/model/postArticleInput";
+import {
+  getGenerationStatus,
+  peekGenerationResult,
+  saveGenerationResult,
+  setGenerationStatus,
+} from "@/features/article-write/lib/writeGeneratingSession";
 
 type ArticleGenerationResponse = {
   title: string;
@@ -33,10 +39,20 @@ export function useArticleGeneration(
       return;
     }
 
-    const controller = new AbortController();
+    if (getGenerationStatus() === "done") {
+      const cached = peekGenerationResult();
+      if (cached) {
+        setArticle(cached);
+        setError("");
+        setIsGenerating(false);
+        return;
+      }
+    }
+
     setArticle(null);
     setError("");
     setIsGenerating(true);
+    setGenerationStatus("generating");
 
     const run = async () => {
       try {
@@ -44,7 +60,6 @@ export function useArticleGeneration(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-          signal: controller.signal,
         });
 
         if (!res.ok) {
@@ -55,29 +70,28 @@ export function useArticleGeneration(
         }
 
         const parsed = (await res.json()) as ArticleGenerationResponse;
-        setArticle({
+        const generated: GeneratedArticle = {
           title: parsed.title,
           content: String(parsed.content ?? ""),
           keywords: Array.isArray(parsed.keywords)
             ? parsed.keywords.map(String)
             : [],
           template: templateKey,
-        });
+        };
+        setArticle(generated);
+        saveGenerationResult(generated);
+        setGenerationStatus("done");
       } catch (err) {
-        if (controller.signal.aborted) return;
+        setGenerationStatus("error");
         setError(
           err instanceof Error ? err.message : "글 생성에 실패했습니다."
         );
       } finally {
-        if (!controller.signal.aborted) {
-          setIsGenerating(false);
-        }
+        setIsGenerating(false);
       }
     };
 
     run();
-
-    return () => controller.abort();
   }, [payload, templateKey]);
 
   return { article, error, isGenerating };

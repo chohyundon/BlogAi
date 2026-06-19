@@ -16,6 +16,10 @@ export default function GeneratingDraft() {
     handleRegenerate,
   } = useGeneratingDraft();
 
+  if (!payload) {
+    return null;
+  }
+
   return (
     <div className={`${NAVY.bg} h-screen flex flex-col`}>
       <ToastContainer

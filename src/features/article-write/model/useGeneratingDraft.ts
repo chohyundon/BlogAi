@@ -9,6 +9,9 @@ import { invalidateUserData } from "@/entities/user/api/queryUserData";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import { StoredPostLimitError } from "@/entities/template/model/postLimit";
 import {
+  clearWriteGeneratingPayload,
+  getGenerationStatus,
+  peekGenerationResult,
   peekWriteGeneratingPayload,
   type WriteGeneratingPayload,
 } from "@/features/article-write/lib/writeGeneratingSession";
@@ -20,10 +23,6 @@ import {
 import { useArticleGeneration } from "@/features/article-write/model/useArticleGeneration";
 import type { GeneratingDraftPhase } from "@/features/article-write/model/generatingDraftPhase";
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
 export function useGeneratingDraft() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -31,12 +30,15 @@ export function useGeneratingDraft() {
   const [payload] = useState<WriteGeneratingPayload | null>(() =>
     peekWriteGeneratingPayload()
   );
-  const [phase, setPhase] = useState<GeneratingDraftPhase>("loading");
+  const cachedResult =
+    payload && getGenerationStatus() === "done" ? peekGenerationResult() : null;
+  const [phase, setPhase] = useState<GeneratingDraftPhase>(() =>
+    cachedResult ? "done" : "loading"
+  );
   const [generatedArticle, setGeneratedArticle] =
-    useState<GeneratedArticle | null>(null);
+    useState<GeneratedArticle | null>(() => cachedResult);
   const [errorMessage, setErrorMessage] = useState("");
-  const saveStartedRef = useRef(false);
-  const activeSaveAbortRef = useRef<AbortController | null>(null);
+  const saveStartedRef = useRef(Boolean(cachedResult));
 
   const { article, error: generationError } = useArticleGeneration(
     payload,
@@ -44,8 +46,8 @@ export function useGeneratingDraft() {
   );
 
   const navigateAfterSave = useCallback(
-    async (postId?: string, signal?: AbortSignal) => {
-      if (signal?.aborted) return;
+    async (postId?: string) => {
+      clearWriteGeneratingPayload();
       if (user?.id) {
         await invalidateUserData(queryClient, user.id);
       }
@@ -54,12 +56,6 @@ export function useGeneratingDraft() {
     },
     [router, queryClient, user?.id]
   );
-
-  useEffect(() => {
-    return () => {
-      activeSaveAbortRef.current?.abort();
-    };
-  }, []);
 
   useEffect(() => {
     if (!payload) {
@@ -80,34 +76,23 @@ export function useGeneratingDraft() {
     saveStartedRef.current = true;
     setGeneratedArticle(article);
 
-    const controller = new AbortController();
-    activeSaveAbortRef.current = controller;
-
     const runAutoSave = async () => {
       try {
         setPhase("saving");
         const { postId } = await saveGeneratedArticle(
           article,
-          payload.selectedTemplate,
-          { signal: controller.signal }
+          payload.selectedTemplate
         );
-        await navigateAfterSave(postId, controller.signal);
+        await navigateAfterSave(postId);
       } catch (error) {
-        if (isAbortError(error) || controller.signal.aborted) return;
         setPhase("error");
         setErrorMessage(
           formatSaveErrorMessage(error, "글 생성 또는 저장에 실패했습니다.")
         );
-      } finally {
-        if (activeSaveAbortRef.current === controller) {
-          activeSaveAbortRef.current = null;
-        }
       }
     };
 
     void runAutoSave();
-
-    return () => controller.abort();
   }, [article, payload, navigateAfterSave]);
 
   const handleSave = async () => {
@@ -116,20 +101,14 @@ export function useGeneratingDraft() {
     const sessionPayload = peekWriteGeneratingPayload();
     if (!sessionPayload) return;
 
-    const controller = new AbortController();
-    activeSaveAbortRef.current = controller;
-
     try {
       setPhase("saving");
       const { postId } = await saveGeneratedArticle(
         generatedArticle,
-        sessionPayload.selectedTemplate,
-        { signal: controller.signal }
+        sessionPayload.selectedTemplate
       );
-      await navigateAfterSave(postId, controller.signal);
+      await navigateAfterSave(postId);
     } catch (error) {
-      if (isAbortError(error) || controller.signal.aborted) return;
-
       setPhase("done");
 
       if (error instanceof StoredPostLimitError) {
@@ -138,14 +117,11 @@ export function useGeneratingDraft() {
         const errorMsg = formatSaveErrorMessage(error, "저장에 실패했습니다.");
         toast.error(`저장 실패: ${errorMsg}`);
       }
-    } finally {
-      if (activeSaveAbortRef.current === controller) {
-        activeSaveAbortRef.current = null;
-      }
     }
   };
 
   const handleRegenerate = () => {
+    clearWriteGeneratingPayload();
     router.push("/write");
   };
 

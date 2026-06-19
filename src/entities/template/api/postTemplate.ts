@@ -1,18 +1,14 @@
-export const postTemplate = async (
-  template: {
-    title: string;
-    content: string;
-    template_type: string;
-    keywords: string[];
-  },
-  options?: { signal?: AbortSignal }
-) => {
+export const postTemplate = async (template: {
+  title: string;
+  content: string;
+  template_type: string;
+  keywords: string[];
+}) => {
   const response = await fetch("/api/supabase", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(template),
-    signal: options?.signal,
   });
 
   const payload = (await response.json()) as {

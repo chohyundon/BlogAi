@@ -6,22 +6,32 @@ import { TEMPLATES } from "@/entities/template/config/Template";
 import WriteSectionHeader from "@/features/article-write/ui/Header/WriteSectionHeader";
 import WriteInfoToolTip from "@/features/article-write/ui/infoTooltip/WriteInfoToolTip";
 import { CheckCircle } from "lucide-react";
-import { NAVY, dashboardWriteStyles } from "@/features/article-write/ui/dashboardWriteStyles";
+import {
+  NAVY,
+  dashboardWriteStyles,
+} from "@/features/article-write/ui/dashboardWriteStyles";
 import { useRouter } from "next/navigation";
 import WriteKeyWord from "@/features/article-write/ui/keyword/WriteKeyWord";
 import BottomCta from "@/features/article-write/ui/bottom/BottomCta";
+import { peekWriteGeneratingPayload } from "@/features/article-write/lib/writeGeneratingSession";
 const { inputBase, sectionCard, templateCardBase } = dashboardWriteStyles;
 
 export default function DashBoardWrite() {
   const router = useRouter();
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("TIL");
-  const [blogTitleValue, setBlogTitleValue] = useState<string>("");
-  const [blogDescriptionValue, setBlogDescriptionValue] = useState<string>("");
-  const [keywords, setKeywords] = useState<string[]>([
-    "React",
-    "성능 최적화",
-    "프론트엔드",
-  ]);
+  const savedPayload = peekWriteGeneratingPayload();
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(
+    () => savedPayload?.selectedTemplate ?? "TIL"
+  );
+  const [blogTitleValue, setBlogTitleValue] = useState<string>(
+    () => savedPayload?.blogTitleValue ?? ""
+  );
+  const [blogDescriptionValue, setBlogDescriptionValue] = useState<string>(
+    () => savedPayload?.blogDescriptionValue ?? ""
+  );
+  const [keywords, setKeywords] = useState<string[]>(
+    () =>
+      savedPayload?.keywords ?? ["React", "성능 최적화", "프론트엔드"]
+  );
 
   const handleSampleView = () => {
     router.push("/post");

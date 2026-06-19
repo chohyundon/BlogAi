@@ -27,33 +27,19 @@ export function formatSaveErrorMessage(
 
 export async function saveGeneratedArticle(
   article: GeneratedArticle,
-  templateType: string,
-  options?: { signal?: AbortSignal }
+  templateType: string
 ): Promise<SaveGeneratedArticleResult> {
-  const { signal } = options ?? {};
-
-  if (signal?.aborted) {
-    throw new DOMException("Aborted", "AbortError");
-  }
-
   const limitError = await ensureUnderStoredPostLimit();
   if (limitError) {
     throw new Error(limitError);
   }
 
-  if (signal?.aborted) {
-    throw new DOMException("Aborted", "AbortError");
-  }
-
-  const saveResult = await postTemplate(
-    {
-      title: article.title,
-      content: article.content,
-      keywords: article.keywords,
-      template_type: templateType,
-    },
-    { signal }
-  );
+  const saveResult = await postTemplate({
+    title: article.title,
+    content: article.content,
+    keywords: article.keywords,
+    template_type: templateType,
+  });
 
   clearWriteGeneratingPayload();
 
