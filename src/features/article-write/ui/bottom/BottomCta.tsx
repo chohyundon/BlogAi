@@ -6,12 +6,12 @@ import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
 import {
-  peekWriteGeneratingPayload,
-  getGenerationStatus,
   grantGeneratingPageEntry,
+  peekWriteGeneratingPayload,
   saveWriteGeneratingPayload,
   setGenerationStatus,
 } from "@/features/article-write/lib/writeGeneratingSession";
+import { useGenerationStatus } from "@/features/article-write/model/useGenerationStatus";
 import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
 import { MAX_STORED_POSTS } from "@/entities/template/model/postLimit";
 
@@ -22,6 +22,9 @@ export default function BottomCta({
   keywords,
 }: BottomCtaProps) {
   const router = useRouter();
+  const generationStatus = useGenerationStatus();
+  const hasPayload =
+    generationStatus === "error" && Boolean(peekWriteGeneratingPayload());
 
   const handleGenerateArticle = async () => {
     if (blogTitleValue.trim() === "" || blogDescriptionValue.trim() === "") {
@@ -30,7 +33,6 @@ export default function BottomCta({
     }
 
     try {
-      // 포스트 저장 가능 개수 확인
       const errorMessage = await ensureUnderStoredPostLimit();
       if (errorMessage) {
         toast.error(errorMessage);
@@ -52,33 +54,23 @@ export default function BottomCta({
     router.push("/write/generating");
   };
 
-  let helperText: string;
-  if (getGenerationStatus() === "generating") {
-    helperText = "글 생성 중입니다. 버튼을 눌러 생성 화면으로 이동하세요.";
-  } else if (getGenerationStatus() === "done") {
-    helperText = "생성이 완료되었습니다. 버튼을 눌러 결과를 확인하세요.";
-  } else if (
-    getGenerationStatus() === "error" &&
-    Boolean(peekWriteGeneratingPayload())
-  ) {
-    helperText = "생성 중 오류가 발생했습니다. 버튼을 눌러 다시 확인하세요.";
-  } else {
-    helperText = `저장 가능: 포스트 최대 ${MAX_STORED_POSTS}개까지. 생성 후 자동으로 저장됩니다.`;
-  }
+  const helperText =
+    generationStatus === "generating"
+      ? "글 생성 중입니다. 버튼을 눌러 생성 화면으로 이동하세요."
+      : generationStatus === "done"
+      ? "생성이 완료되었습니다. 버튼을 눌러 결과를 확인하세요."
+      : hasPayload
+      ? "생성 중 오류가 발생했습니다. 버튼을 눌러 다시 확인하세요."
+      : `저장 가능: 포스트 최대 ${MAX_STORED_POSTS}개까지. 생성 후 자동으로 저장됩니다.`;
 
-  let buttonLabel: string;
-  if (getGenerationStatus() === "generating") {
-    buttonLabel = "생성 화면으로 이동";
-  } else if (getGenerationStatus() === "done") {
-    buttonLabel = "생성 결과 보기";
-  } else if (
-    getGenerationStatus() === "error" &&
-    Boolean(peekWriteGeneratingPayload())
-  ) {
-    buttonLabel = "생성 화면으로 이동";
-  } else {
-    buttonLabel = "AI 글 생성하기";
-  }
+  const buttonLabel =
+    generationStatus === "generating"
+      ? "생성 화면으로 이동"
+      : generationStatus === "done"
+      ? "생성 결과 보기"
+      : hasPayload
+      ? "생성 화면으로 이동"
+      : "AI 글 생성하기";
 
   return (
     <>

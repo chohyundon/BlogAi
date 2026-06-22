@@ -8,6 +8,7 @@ import {
 export const WRITE_GENERATING_SESSION_KEY = "self:write-generating";
 export const WRITE_GENERATION_STATUS_KEY = "self:write-generation-status";
 export const WRITE_GENERATION_RESULT_KEY = "self:write-generation-result";
+export const GENERATION_STATUS_CHANGE_EVENT = "write-generation-status-change";
 
 export type WriteGeneratingPayload = {
   selectedTemplate: string;
@@ -48,7 +49,7 @@ function isGeneratedArticle(v: unknown): v is GeneratedArticle {
 
 function notifyGenerationStatusChange(): void {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event("write-generation-status-change"));
+  window.dispatchEvent(new Event(GENERATION_STATUS_CHANGE_EVENT));
 }
 
 /** 생성 페이지로 넘기기 전에 호출 */
