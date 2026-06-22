@@ -4,8 +4,11 @@ import { Provider } from "@supabase/supabase-js";
 export const SocialLogin = async (provider: string) => {
   const supabase = createClient();
 
+  const redirectTo = `${window.location.origin}/auth/callback`;
+
   const { data } = await supabase.auth.signInWithOAuth({
     provider: provider as Provider,
+    options: { redirectTo },
   });
 
   return data;

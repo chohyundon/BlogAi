@@ -1,12 +1,27 @@
+"use client";
+
+import AuthModal from "@/features/auth/ui/AuthModal";
+import { useAuthStore } from "@/features/auth/model/AuthStore";
 import Button from "@/shared/ui/Button";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-type BottomCtaProps = {
-  onStartFree: () => void;
-};
+export default function BottomCta() {
+  const router = useRouter();
+  const user = useAuthStore((state) => state.user);
+  const [isOpenModal, setIsOpenModal] = useState(false);
 
-export default function BottomCta({ onStartFree }: BottomCtaProps) {
+  const onStartFree = () => {
+    if (user) {
+      router.push("/dashboard");
+    } else {
+      setIsOpenModal(true);
+    }
+  };
+
   return (
     <section className="max-w-5xl mx-auto px-6 pb-32">
+      {isOpenModal && <AuthModal setOpenModal={setIsOpenModal} />}
       <div className="relative rounded-3xl p-12 overflow-hidden text-center bg-amber-500 flex flex-col items-center">
         <div className="absolute inset-0 grid-pattern opacity-20 pointer-events-none" />
         <h2 className="text-3xl md:text-5xl font-black text-white mb-6 relative z-10">

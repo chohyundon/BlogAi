@@ -4,8 +4,8 @@ export function normalizeKeywords(result: Record<string, unknown>): string[] {
   return Array.isArray(result.keywords)
     ? (result.keywords as unknown[]).map(String)
     : Array.isArray(result.hashtags)
-      ? (result.hashtags as unknown[]).map(String)
-      : [];
+    ? (result.hashtags as unknown[]).map(String)
+    : [];
 }
 
 export function parseModelJsonOutput(trimmed: string): Record<string, unknown> {
