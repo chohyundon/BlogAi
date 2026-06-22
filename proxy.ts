@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createClient } from "@/shared/api/supabase/server";
+import { createClient } from "@/shared/api/supabase/client";
 import {
   WRITE_GENERATING_ENTRY_COOKIE,
   WRITE_GENERATING_ENTRY_VALUE,
@@ -45,6 +45,8 @@ async function guardAuth(req: NextRequest): Promise<NextResponse | null> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+
+  console.log("session", session);
 
   if (!session) {
     return NextResponse.redirect(new URL("/", req.url));
