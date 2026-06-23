@@ -64,3 +64,53 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ data });
 }
+
+export async function DELETE(request: NextRequest) {
+  const postId = request.nextUrl.searchParams.get("id")?.trim();
+  if (!postId) {
+    return NextResponse.json(
+      { error: "삭제할 포스트 id가 필요합니다." },
+      { status: 400 }
+    );
+  }
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: "인증이 필요합니다. 다시 로그인해 주세요." },
+      { status: 401 }
+    );
+  }
+
+  const { error, count } = await supabase
+    .from("posts")
+    .delete({ count: "exact" })
+    .eq("id", postId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Supabase posts delete:", error);
+    return NextResponse.json(
+      {
+        error: "글 삭제에 실패했습니다.",
+        ...(isDev ? { details: error.message } : {}),
+      },
+      { status: 500 }
+    );
+  }
+
+  if (count === 0) {
+    return NextResponse.json(
+      { error: "삭제할 포스트를 찾을 수 없습니다." },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({ ok: true });
+}

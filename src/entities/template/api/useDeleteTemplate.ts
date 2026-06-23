@@ -2,7 +2,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { deleteTemplate } from "@/entities/template/api/deleteTemplate";
-import { invalidateUserData } from "@/entities/user/api/queryUserData";
+import {
+  invalidateUserData,
+  userDataQueryKey,
+} from "@/entities/user/api/queryUserData";
+import type { DatabaseDocument } from "@/shared/types/database";
 
 export function useDeleteTemplate(userId: string | undefined) {
   const queryClient = useQueryClient();
@@ -15,10 +19,16 @@ export function useDeleteTemplate(userId: string | undefined) {
       }
       return postId;
     },
-    onSuccess: () => {
-      if (userId) {
-        invalidateUserData(queryClient, userId);
+    onSuccess: async (postId) => {
+      if (!userId) {
+        return;
       }
+
+      queryClient.setQueryData<DatabaseDocument[] | null>(
+        userDataQueryKey(userId),
+        (old) => old?.filter((post) => String(post.id) !== String(postId))
+      );
+      await invalidateUserData(queryClient, userId);
     },
   });
 }

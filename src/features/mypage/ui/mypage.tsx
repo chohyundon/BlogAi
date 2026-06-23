@@ -63,8 +63,9 @@ export default function MypageScreen() {
             ? queryClient.getQueryData<DatabaseDocument[]>(
                 userDataQueryKey(user.id)
               )
-            : null) ??
-          templatesData ??
+            : null
+          )?.filter((post) => String(post.id) !== postId) ??
+          templatesData?.filter((post) => String(post.id) !== postId) ??
           [];
         const nextFiltered = filterPostsByTypeAndSearch(
           list,
