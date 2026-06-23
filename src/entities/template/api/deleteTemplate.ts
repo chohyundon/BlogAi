@@ -1,35 +1,20 @@
-"use server";
-
-import { createClient } from "@/shared/api/supabase/server";
-
 export async function deleteTemplate(
   templateId: string
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient();
+  const response = await fetch(
+    `/api/supabase?id=${encodeURIComponent(templateId)}`,
+    {
+      method: "DELETE",
+      credentials: "same-origin",
+    }
+  );
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const payload = (await response.json()) as { error?: string };
 
-  if (authError || !user) {
-    return { error: "인증이 필요합니다. 다시 로그인해 주세요." };
-  }
-
-  const { data, error } = await supabase
-    .from("posts")
-    .delete()
-    .eq("id", String(templateId))
-    .eq("user_id", user.id)
-    .select("id");
-
-  if (error) {
-    console.error(error);
-    return { error: error.message };
-  }
-
-  if (!data?.length) {
-    return { error: "삭제할 포스트를 찾을 수 없습니다." };
+  if (!response.ok || payload.error) {
+    return {
+      error: payload.error ?? `요청 실패 (${response.status})`,
+    };
   }
 
   return { error: null };
