@@ -17,7 +17,7 @@ export function useDeleteTemplate(userId: string | undefined) {
     },
     onSuccess: () => {
       if (userId) {
-        void invalidateUserData(queryClient, userId);
+        invalidateUserData(queryClient, userId);
       }
     },
   });
