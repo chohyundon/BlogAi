@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useOptimistic, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+} from "react";
 import DeleteModal from "@/features/delete-template/ui/DeleteModal";
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
@@ -56,35 +62,41 @@ export default function MypageScreen() {
     router.push(`/post/${id}`);
   };
 
-  const handleConfirmDelete = async (id: string) => {
-    const postId = String(id);
-    markTemplateDeleted(postId);
+  const handleConfirmDelete = (id: string) => {
+    startTransition(async () => {
+      const postId = String(id);
+      markTemplateDeleted(postId);
 
-    const { error } = await deleteTemplate(postId);
-    if (error) {
-      toast.error(error);
-      throw new Error(error);
-    }
+      try {
+        const { error } = await deleteTemplate(postId);
+        if (error) {
+          throw new Error(error);
+        }
+      } catch (error) {
+        toast.error((error as Error).message ?? "삭제에 실패했습니다.");
+        return;
+      }
 
-    if (user?.id) {
-      queryClient.setQueryData<DatabaseDocument[] | null>(
-        userDataQueryKey(user.id),
-        (old) => old?.filter((post) => String(post.id) !== postId) ?? []
+      if (user?.id) {
+        queryClient.setQueryData<DatabaseDocument[] | null>(
+          userDataQueryKey(user.id),
+          (old) => old?.filter((post) => String(post.id) !== postId) ?? []
+        );
+      }
+
+      const nextFiltered = filterPostsByTypeAndSearch(
+        (templatesData ?? []).filter((post) => String(post.id) !== postId),
+        selectedTemplateType,
+        searchQuery
       );
-    }
-
-    const nextFiltered = filterPostsByTypeAndSearch(
-      (templatesData ?? []).filter((post) => String(post.id) !== postId),
-      selectedTemplateType,
-      searchQuery
-    );
-    const nextTotalPages = Math.max(
-      1,
-      Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
-    );
-    setCurrentPage((page) => Math.min(page, nextTotalPages - 1));
-    setDeleteTargetId(null);
-    toast.success("포스트가 삭제되었습니다.");
+      const nextTotalPages = Math.max(
+        1,
+        Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
+      );
+      setCurrentPage((page) => Math.min(page, nextTotalPages - 1));
+      setDeleteTargetId(null);
+      toast.success("포스트가 삭제되었습니다.");
+    });
   };
 
   const filteredTemplates = filterPostsByTypeAndSearch(
