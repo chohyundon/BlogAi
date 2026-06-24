@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  startTransition,
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+} from "react";
 import DeleteModal from "@/features/delete-template/ui/DeleteModal";
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import { useFilterStore } from "@/features/mypage/model/FilterStore";
 import { useAuthStore } from "@/features/auth/model/AuthStore";
-import { useDeleteTemplate } from "@/entities/template/api/useDeleteTemplate";
+import { deleteTemplate } from "@/entities/template/api/deleteTemplate";
 import { TEMPLATES_PER_PAGE } from "@/entities/template/config/Template";
 import MypageToolbar from "@/features/mypage/ui/MypageToolbar";
 import MypagePostsTable from "@/features/mypage/ui/MypagePostsTable";
@@ -37,7 +43,11 @@ export default function MypageScreen() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const { data: templatesData = [], isLoading } = useQueryUserData(user?.id);
-  const deleteMutation = useDeleteTemplate(user?.id);
+  const [optimisticTemplates, markTemplateDeleted] = useOptimistic(
+    templatesData ?? [],
+    (current, postIdToRemove: string) =>
+      current.filter((post) => String(post.id) !== postIdToRemove)
+  );
 
   useEffect(() => {
     setCurrentPage(0);
@@ -52,43 +62,45 @@ export default function MypageScreen() {
     router.push(`/post/${id}`);
   };
 
-  const handleConfirmDelete = async (id: string) => {
-    const postId = String(id);
-    try {
-      await deleteMutation.mutateAsync(postId);
-      toast.success("포스트가 삭제되었습니다.");
-      setCurrentPage((page) => {
-        const list =
-          (user?.id
-            ? queryClient.getQueryData<DatabaseDocument[]>(
-                userDataQueryKey(user.id)
-              )
-            : null
-          )?.filter((post) => String(post.id) !== postId) ??
-          templatesData?.filter((post) => String(post.id) !== postId) ??
-          [];
-        const nextFiltered = filterPostsByTypeAndSearch(
-          list,
-          selectedTemplateType,
-          searchQuery
+  const handleConfirmDelete = (id: string) => {
+    startTransition(async () => {
+      const postId = String(id);
+      markTemplateDeleted(postId);
+
+      try {
+        const { error } = await deleteTemplate(postId);
+        if (error) {
+          throw new Error(error);
+        }
+      } catch (error) {
+        toast.error((error as Error).message ?? "삭제에 실패했습니다.");
+        return;
+      }
+
+      if (user?.id) {
+        queryClient.setQueryData<DatabaseDocument[] | null>(
+          userDataQueryKey(user.id),
+          (old) => old?.filter((post) => String(post.id) !== postId) ?? []
         );
-        const nextTotalPages = Math.max(
-          1,
-          Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
-        );
-        return Math.min(page, nextTotalPages - 1);
-      });
-      setDeleteTargetId(null);
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "포스트 삭제에 실패했습니다."
+      }
+
+      const nextFiltered = filterPostsByTypeAndSearch(
+        (templatesData ?? []).filter((post) => String(post.id) !== postId),
+        selectedTemplateType,
+        searchQuery
       );
-      throw err;
-    }
+      const nextTotalPages = Math.max(
+        1,
+        Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
+      );
+      setCurrentPage((page) => Math.min(page, nextTotalPages - 1));
+      setDeleteTargetId(null);
+      toast.success("포스트가 삭제되었습니다.");
+    });
   };
 
   const filteredTemplates = filterPostsByTypeAndSearch(
-    templatesData ?? [],
+    optimisticTemplates,
     selectedTemplateType,
     searchQuery
   );
@@ -149,7 +161,7 @@ export default function MypageScreen() {
           <div>
             <h2 className="text-2xl font-bold text-white">내 블로그 글 목록</h2>
             <p className="text-slate-400 text-sm">
-              총 {templatesData?.length ?? 0}개의 기술 포스트를 관리하고
+              총 {optimisticTemplates.length}개의 기술 포스트를 관리하고
               있습니다.
             </p>
           </div>
@@ -161,7 +173,7 @@ export default function MypageScreen() {
           selectedTemplateType={selectedTemplateType}
           filterModalOpen={filterModalOpen}
           setFilterModalOpen={setFilterModalOpen}
-          templates={templatesData ?? []}
+          templates={optimisticTemplates}
         />
       </header>
 
