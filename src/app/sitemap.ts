@@ -2,31 +2,38 @@ import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = "https://www.blogai.store";
+  const lastModified = new Date();
 
   return [
     {
       url: base,
-      lastModified: new Date(),
+      lastModified,
       changeFrequency: "weekly",
       priority: 1,
     },
     {
-      url: `${base}/dashboard`,
-      lastModified: new Date(),
+      url: `${base}/example`,
+      lastModified,
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${base}/write`,
-      lastModified: new Date(),
+      url: `${base}/example/TIL`,
+      lastModified,
       changeFrequency: "monthly",
-      priority: 0.8,
+      priority: 0.7,
     },
     {
-      url: `${base}/mypage`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
+      url: `${base}/example/Trouble_Shooting`,
+      lastModified,
       priority: 0.7,
+      changeFrequency: "monthly",
+    },
+    {
+      url: `${base}/example/Deep_Dive`,
+      lastModified,
+      priority: 0.7,
+      changeFrequency: "monthly",
     },
   ];
 }

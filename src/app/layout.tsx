@@ -10,19 +10,47 @@ const pretendard = localFont({
   variable: "--font-pretendard",
 });
 
+const siteUrl = "https://www.blogai.store";
+const siteName = "BlogAi";
+const siteDescription = "AI로 더 스마트하게, 개발자용 기술 블로그 작성";
+const ogImage = "/opengraph-image";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.blogai.store"),
-  title: "BlogAi",
-  description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
-  icons: {
-    icon: "/icon.png",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: siteName,
+    template: `%s | ${siteName}`,
+  },
+  description: siteDescription,
+  applicationName: siteName,
+  keywords: ["AI 블로그", "기술 블로그", "개발자 블로그", "블로그 글쓰기"],
+  authors: [{ name: siteName }],
+  creator: siteName,
+  publisher: siteName,
+  alternates: {
+    canonical: "/",
   },
   openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName,
+    locale: "ko_KR",
+    title: siteName,
+    description: siteDescription,
     images: [
       {
-        url: "/icon.png",
+        url: ogImage,
+        width: 1200,
+        height: 630,
+        alt: siteDescription,
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteName,
+    description: siteDescription,
+    images: [ogImage],
   },
 };
 
