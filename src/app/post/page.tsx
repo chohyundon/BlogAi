@@ -1,16 +1,17 @@
 import PostScreen from "@/features/post-view/ui/PostScreen";
+import { siteDescription, siteName } from "@/shared/config/site";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "BlogAi - 블로그 포스트",
-  description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+  title: `${siteName} - 블로그 포스트`,
+  description: siteDescription,
   robots: {
     index: false,
     follow: false,
   },
   openGraph: {
-    title: "BlogAi - 블로그 포스트",
-    description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+    title: `${siteName} - 블로그 포스트`,
+    description: siteDescription,
   },
 };
 

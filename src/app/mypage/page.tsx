@@ -1,16 +1,17 @@
 import Mypage from "@/features/mypage/ui/mypage";
+import { siteDescription, siteName } from "@/shared/config/site";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "BlogAi - 내 블로그 글 목록",
-  description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+  title: `${siteName} - 내 블로그 글 목록`,
+  description: siteDescription,
   robots: {
     index: false,
     follow: false,
   },
   openGraph: {
-    title: "BlogAi - 내 블로그 글 목록",
-    description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+    title: `${siteName} - 내 블로그 글 목록`,
+    description: siteDescription,
   },
 };
 

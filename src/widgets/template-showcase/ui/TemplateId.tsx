@@ -1,5 +1,6 @@
 "use client";
 
+import { TEMPLATES } from "@/entities/template/config/Template";
 import { MOCK_TEMPLATES } from "@/entities/template/mocks/mock";
 import ReactMarkdown from "react-markdown";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -11,21 +12,26 @@ import { useParams } from "next/navigation";
 export default function TemplateId() {
   const params = useParams();
   const id = params.id as string;
+  const template = TEMPLATES.find((item) => item.id === id);
+  const content = MOCK_TEMPLATES[0].find((item) => item.id === id);
 
-  const content = MOCK_TEMPLATES[0].filter((t) => t.id === id);
+  if (!template || !content) {
+    return null;
+  }
 
   return (
     <main className="flex-1 p-6 sm:p-8 w-full min-h-full bg-navy-950 overflow-y-auto">
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
           <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 mb-4">
-            TIL 템플릿
+            BlogAi · {template.name}
           </span>
           <h1 className="text-3xl font-black text-white tracking-tight">
-            템플릿 예시
+            BlogAi {template.name} 템플릿 예시
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            실제 포스트에 적용되는 TIL 형식 미리보기입니다.
+            BlogAi에서 실제 포스트에 적용되는 {template.name} 형식
+            미리보기입니다.
           </p>
         </header>
 
@@ -57,7 +63,7 @@ export default function TemplateId() {
                   );
                 },
               }}>
-              {content[0].content}
+              {content.content}
             </ReactMarkdown>
           </div>
         </article>

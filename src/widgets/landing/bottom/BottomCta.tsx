@@ -13,7 +13,7 @@ export default function BottomCta({ onStartFree }: BottomCtaProps) {
           지금 바로 첫 글을 작성해보세요
         </h2>
         <p className="text-white/90 mb-10 text-lg relative z-10">
-          수백 명의 개발자가 이미 TechWrite AI와 함께 성장하고 있습니다.
+          수백 명의 개발자가 이미 BlogAi와 함께 성장하고 있습니다.
         </p>
         <Button
           onClick={onStartFree}

@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "@/app/globals.css";
 import { Providers } from "@/app/providers";
+import {
+  ogImage,
+  siteDescription,
+  siteName,
+  siteUrl,
+  websiteJsonLd,
+} from "@/shared/config/site";
 import AppShell from "@/widgets/app-shell/ui/AppShell";
 
 const pretendard = localFont({
@@ -9,11 +16,6 @@ const pretendard = localFont({
   display: "swap",
   variable: "--font-pretendard",
 });
-
-const siteUrl = "https://www.blogai.store";
-const siteName = "BlogAi";
-const siteDescription = "AI로 더 스마트하게, 개발자용 기술 블로그 작성";
-const ogImage = "/opengraph-image";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -23,7 +25,15 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: siteName,
-  keywords: ["AI 블로그", "기술 블로그", "개발자 블로그", "블로그 글쓰기"],
+  keywords: [
+    "BlogAi",
+    "BlogAI",
+    "blogai.store",
+    "AI 블로그",
+    "기술 블로그",
+    "개발자 블로그",
+    "블로그 글쓰기",
+  ],
   authors: [{ name: siteName }],
   creator: siteName,
   publisher: siteName,
@@ -62,6 +72,12 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${pretendard.variable} antialiased`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteJsonLd),
+          }}
+        />
         <Providers>
           <AppShell>{children}</AppShell>
         </Providers>

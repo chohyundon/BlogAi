@@ -1,6 +1,7 @@
+import { siteDescription } from "@/shared/config/site";
 import { ImageResponse } from "next/og";
 
-export const alt = "BlogAi - AI로 더 스마트하게, 개발자용 기술 블로그 작성";
+export const alt = siteDescription;
 export const size = {
   width: 1200,
   height: 630,

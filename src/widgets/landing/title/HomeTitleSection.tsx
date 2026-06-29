@@ -12,18 +12,21 @@ export default function HomeTitleSection({
     <main className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-32 flex flex-col items-center text-center">
       <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold mb-8">
         <Bot className="size-4" />
-        GPT-4o 기반 기술 블로그 작성 지원
+        BlogAi · GPT-4o 기반 기술 블로그 작성
       </div>
       <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6 max-w-4xl leading-[1.1] text-white">
-        개발자의 글쓰기, <br />
-        <span className="inline-flex items-center justify-center gap-1 text-amber-400">
-          <Sparkle className="size-4 shrink-0" /> AI로 더 스마트하게
+        <span className="text-amber-400">BlogAi</span> — 개발자의 글쓰기,{" "}
+        <br />
+        <span className="inline-flex items-center justify-center gap-1">
+          <Sparkle className="size-4 shrink-0 text-amber-400" /> AI로 더
+          스마트하게
         </span>
       </h1>
       <p className="text-lg md:text-xl text-slate-300 max-w-2xl mb-12 leading-relaxed">
-        복잡한 기술 블로그 작성, 이제 AI와 개발자 전용 템플릿으로{" "}
-        <br className="hidden md:block" /> 10분 만에 완성하세요. 코드는 그대로,
-        설명은 완벽하게.
+        BlogAi는 AI와 개발자 전용 템플릿으로 기술 블로그 작성을 돕습니다.{" "}
+        <br className="hidden md:block" />
+        10분 만에 초안을 만들고 Markdown으로 다듬으세요. 코드는 그대로, 설명은
+        완벽하게.
       </p>
       <div className="flex flex-col sm:flex-row gap-4 mb-24 w-full justify-center">
         <button

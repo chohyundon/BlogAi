@@ -9,8 +9,8 @@ export default function Footer() {
         <Link
           href="/"
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-          <span className="font-bold tracking-tight text-sm uppercase">
-            TechWrite AI
+          <span className="font-bold tracking-tight text-sm text-white">
+            Blog<span className="text-amber-400">Ai</span>
           </span>
         </Link>
         <nav className="flex gap-6 text-sm text-slate-400">
@@ -24,7 +24,7 @@ export default function Footer() {
             Contact
           </Link>
           <a
-            href="https://github.com"
+            href="https://github.com/chohyundon/BlogAi"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-amber-400 transition-colors">
@@ -32,7 +32,7 @@ export default function Footer() {
           </a>
         </nav>
         <p className="text-xs text-slate-500">
-          © {year} TechWrite AI. All rights reserved.
+          © {year} BlogAi. All rights reserved.
         </p>
       </div>
     </footer>

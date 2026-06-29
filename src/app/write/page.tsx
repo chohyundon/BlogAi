@@ -1,9 +1,10 @@
 import DashBoardWrite from "@/features/article-write/ui/DashBoard";
+import { siteDescription, siteName } from "@/shared/config/site";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "BlogAi - 글 작성",
-  description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+  title: `${siteName} - 글 작성`,
+  description: siteDescription,
   robots: {
     index: false,
     follow: false,

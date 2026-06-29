@@ -1,15 +1,16 @@
 import Template from "@/widgets/template-showcase/ui/Template";
+import { siteDescription, siteName } from "@/shared/config/site";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "BlogAi - 템플릿 예시",
-  description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+  title: `${siteName} - 템플릿 예시`,
+  description: siteDescription,
   alternates: {
     canonical: "/example",
   },
   openGraph: {
-    title: "BlogAi - 템플릿 예시",
-    description: "AI로 더 스마트하게, 개발자용 기술 블로그 작성",
+    title: `${siteName} - 템플릿 예시`,
+    description: siteDescription,
     url: "/example",
   },
 };
