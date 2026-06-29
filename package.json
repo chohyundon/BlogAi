@@ -1,7 +1,8 @@
 {
-  "name": "self",
+  "name": "blogai",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://www.blogai.store",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
