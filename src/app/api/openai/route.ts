@@ -25,13 +25,6 @@ function completionTokenParam(model: string) {
     : { max_tokens: COMPLETION_TOKEN_LIMIT };
 }
 
-function isClientAbort(request: NextRequest, error: unknown): boolean {
-  return (
-    request.signal.aborted ||
-    (error instanceof Error && error.name === "AbortError")
-  );
-}
-
 export async function POST(request: NextRequest) {
   try {
     let body: unknown;
@@ -40,7 +33,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: "요청 본문이 올바른 JSON이 아닙니다." },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -48,13 +41,10 @@ export async function POST(request: NextRequest) {
       parseBlogGenerationBody(body as Record<string, unknown>);
 
     const limitGate = await gateStoredPostLimitForAi();
-    if (request.signal.aborted) {
-      return new Response(null, { status: 499 });
-    }
     if (!limitGate.ok) {
       return NextResponse.json(
         { error: limitGate.error },
-        { status: limitGate.status },
+        { status: limitGate.status }
       );
     }
 
@@ -62,7 +52,7 @@ export async function POST(request: NextRequest) {
       console.error("OPENAI_API_KEY가 설정되지 않았습니다.");
       return NextResponse.json(
         { error: "서버 설정 오류입니다." },
-        { status: 500 },
+        { status: 500 }
       );
     }
 
@@ -74,21 +64,14 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildUserPrompt(topicStr, description, keywords);
     const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-    const completion = await openai.chat.completions.create(
-      {
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        ...completionTokenParam(model),
-      },
-      { signal: request.signal },
-    );
-
-    if (request.signal.aborted) {
-      return new Response(null, { status: 499 });
-    }
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      ...completionTokenParam(model),
+    });
 
     const content = completion.choices[0]?.message?.content?.trim();
     const result = parseModelJsonOutput(content ?? "");
@@ -98,10 +81,6 @@ export async function POST(request: NextRequest) {
       keywords: keywordsResult,
     });
   } catch (error) {
-    if (isClientAbort(request, error)) {
-      return new Response(null, { status: 499 });
-    }
-
     console.error("API Error:", error);
     const message = error instanceof Error ? error.message : String(error);
     const status = isAiClientErrorMessage(message) ? 400 : 500;
@@ -110,7 +89,7 @@ export async function POST(request: NextRequest) {
         error: "글 생성에 실패했습니다.",
         ...(isDev ? { details: message } : {}),
       },
-      { status },
+      { status }
     );
   }
 }
