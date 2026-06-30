@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import type { PostArticleInput } from "@/entities/article/model/postArticleInput";
-import {
-  getGenerationStatus,
-  peekGenerationResult,
-  saveGenerationResult,
-  setGenerationStatus,
-} from "@/features/article-write/lib/writeGeneratingSession";
 
 type ArticleGenerationResponse = {
   title: string;
@@ -26,11 +20,12 @@ function aiEndpoint(): "/api/openai" | "/api/gemini" {
 
 export function useArticleGeneration(
   payload: PostArticleInput | null,
-  templateKey: string
+  templateKey: string,
 ) {
   const [article, setArticle] = useState<GeneratedArticle | null>(null);
   const [error, setError] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!payload) {
@@ -39,20 +34,12 @@ export function useArticleGeneration(
       return;
     }
 
-    if (getGenerationStatus() === "done") {
-      const cached = peekGenerationResult();
-      if (cached) {
-        setArticle(cached);
-        setError("");
-        setIsGenerating(false);
-        return;
-      }
-    }
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setArticle(null);
     setError("");
     setIsGenerating(true);
-    setGenerationStatus("generating");
 
     const run = async () => {
       try {
@@ -60,6 +47,7 @@ export function useArticleGeneration(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          signal: controller.signal,
         });
 
         if (!res.ok) {
@@ -70,28 +58,34 @@ export function useArticleGeneration(
         }
 
         const parsed = (await res.json()) as ArticleGenerationResponse;
-        const generated: GeneratedArticle = {
+        setArticle({
           title: parsed.title,
           content: String(parsed.content ?? ""),
           keywords: Array.isArray(parsed.keywords)
             ? parsed.keywords.map(String)
             : [],
           template: templateKey,
-        };
-        setArticle(generated);
-        saveGenerationResult(generated);
-        setGenerationStatus("done");
+        });
       } catch (err) {
-        setGenerationStatus("error");
+        if (controller.signal.aborted) return;
         setError(
-          err instanceof Error ? err.message : "글 생성에 실패했습니다."
+          err instanceof Error ? err.message : "글 생성에 실패했습니다.",
         );
       } finally {
-        setIsGenerating(false);
+        if (!controller.signal.aborted) {
+          setIsGenerating(false);
+        }
       }
     };
 
-    run();
+    void run();
+
+    return () => {
+      controller.abort();
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
+    };
   }, [payload, templateKey]);
 
   return { article, error, isGenerating };

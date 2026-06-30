@@ -14,6 +14,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 const isDev = process.env.NODE_ENV === "development";
 
+function isClientAbort(request: NextRequest, error: unknown): boolean {
+  return (
+    request.signal.aborted ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     let body: unknown;
@@ -22,7 +29,7 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: "요청 본문이 올바른 JSON이 아닙니다." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -30,21 +37,24 @@ export async function POST(request: NextRequest) {
       parseBlogGenerationBody(body as Record<string, unknown>);
 
     const limitGate = await gateStoredPostLimitForAi();
+    if (request.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
     if (!limitGate.ok) {
       return NextResponse.json(
         { error: limitGate.error },
-        { status: limitGate.status }
+        { status: limitGate.status },
       );
     }
 
     const apiKey = getGeminiApiKey();
     if (!apiKey) {
       console.error(
-        "GEMINI_API_KEY(또는 NEXT_PUBLIC_GEMINI_API_KEY)가 설정되지 않았습니다."
+        "GEMINI_API_KEY(또는 NEXT_PUBLIC_GEMINI_API_KEY)가 설정되지 않았습니다.",
       );
       return NextResponse.json(
         { error: "서버 설정 오류입니다." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -54,6 +64,7 @@ export async function POST(request: NextRequest) {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: request.signal,
         body: JSON.stringify({
           system_instruction: {
             parts: [{ text: getSystemPrompt(styleKey) }],
@@ -69,8 +80,12 @@ export async function POST(request: NextRequest) {
             responseMimeType: "application/json",
           },
         }),
-      }
+      },
     );
+
+    if (request.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
 
     if (!res.ok) {
       throw new Error(`Gemini HTTP ${res.status}`);
@@ -87,6 +102,11 @@ export async function POST(request: NextRequest) {
       keywords: keywordsResult,
     });
   } catch (error) {
+    if (isClientAbort(request, error)) {
+      return new Response(null, { status: 499 });
+    }
+
+    console.error("Gemini API Error:", error);
     const message = error instanceof Error ? error.message : String(error);
     const status = isAiClientErrorMessage(message) ? 400 : 500;
     return NextResponse.json(
@@ -94,7 +114,7 @@ export async function POST(request: NextRequest) {
         error: "글 생성에 실패했습니다.",
         ...(isDev ? { details: message } : {}),
       },
-      { status }
+      { status },
     );
   }
 }
