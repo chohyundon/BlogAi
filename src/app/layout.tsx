@@ -12,7 +12,24 @@ import {
 import AppShell from "@/widgets/app-shell/ui/AppShell";
 
 const pretendard = localFont({
-  src: "../../public/fonts/PretendardVariable.woff2",
+  src: [
+    {
+      path: "../../public/fonts/woff2-subset/Pretendard-Regular.subset.woff2",
+      weight: "400",
+    },
+    {
+      path: "../../public/fonts/woff2-subset/Pretendard-Medium.subset.woff2",
+      weight: "500",
+    },
+    {
+      path: "../../public/fonts/woff2-subset/Pretendard-SemiBold.subset.woff2",
+      weight: "600",
+    },
+    {
+      path: "../../public/fonts/woff2-subset/Pretendard-Bold.subset.woff2",
+      weight: "700",
+    },
+  ],
   display: "swap",
   variable: "--font-pretendard",
 });
