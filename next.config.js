@@ -1,6 +1,15 @@
 const nextConfig = {
   reactCompiler: true,
   turbopack: {},
+  async redirects() {
+    return [
+      {
+        source: "/sitemap",
+        destination: "/sitemap.xml",
+        permanent: true,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

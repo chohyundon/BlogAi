@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "@/shared/config/site";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/dashboard", "/mypage", "/write"],
     },
-    sitemap: "https://www.blogai.store/sitemap.xml",
+    sitemap: `${siteUrl}/sitemap.xml`,
   };
 }
