@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
+import { normalizePostKeywords } from "@/features/post-view/lib/normalizePostKeywords";
 import { createClient } from "@/shared/api/supabase/client";
 import type { DatabaseDocument } from "@/shared/types/database";
 
@@ -20,7 +21,10 @@ export async function getPostWrite(postId: string) {
     throw new Error(error.message);
   }
 
-  return data as DatabaseDocument;
+  return {
+    ...(data as DatabaseDocument),
+    keywords: normalizePostKeywords(data.keywords) ?? [],
+  };
 }
 
 export async function invalidatePost(queryClient: QueryClient, postId: string) {

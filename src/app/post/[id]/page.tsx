@@ -1,6 +1,12 @@
 import PostScreen from "@/features/post-view/ui/PostScreen";
 import { getPostForSeo } from "@/features/post-view/lib/getPostForSeo";
-import { ogImage, siteDescription, siteName, siteUrl } from "@/shared/config/site";
+import { normalizePostKeywords } from "@/features/post-view/lib/normalizePostKeywords";
+import {
+  ogImage,
+  siteDescription,
+  siteName,
+  siteUrl,
+} from "@/shared/config/site";
 import { Metadata } from "next";
 
 type Props = { params: Promise<{ id: string }> };
@@ -19,8 +25,10 @@ function toDescription(content: string | null | undefined) {
 
 function buildBlogPostingJsonLd(
   id: string,
-  post: NonNullable<Awaited<ReturnType<typeof getPostForSeo>>>
+  post: NonNullable<Awaited<ReturnType<typeof getPostForSeo>>>,
 ) {
+  const keywords = normalizePostKeywords(post.keywords);
+
   return {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -41,7 +49,7 @@ function buildBlogPostingJsonLd(
       },
     },
     mainEntityOfPage: `${siteUrl}/post/${id}`,
-    keywords: post.keywords?.join(", "),
+    keywords: keywords?.join(", "),
     articleSection: post.template_type,
   };
 }
@@ -60,11 +68,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = post.title || fallbackTitle;
   const description = toDescription(post.content);
+  const keywords = normalizePostKeywords(post.keywords);
 
   return {
     title,
     description,
-    keywords: post.keywords ?? undefined,
+    keywords: keywords ?? undefined,
     alternates: {
       canonical: `/post/${id}`,
     },
@@ -74,7 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `/post/${id}`,
       publishedTime: post.created_at,
-      tags: post.keywords ?? undefined,
+      tags: keywords ?? undefined,
       section: post.template_type,
       images: [
         {

@@ -1,3 +1,4 @@
+import { normalizePostKeywords } from "@/features/post-view/lib/normalizePostKeywords";
 import { createClient } from "@/shared/api/supabase/server";
 
 export type PostSeoData = {
@@ -19,7 +20,12 @@ export async function getPostForSeo(
       .eq("id", postId)
       .single();
 
-    return data;
+    if (!data) return null;
+
+    return {
+      ...data,
+      keywords: normalizePostKeywords(data.keywords),
+    };
   } catch {
     return null;
   }
