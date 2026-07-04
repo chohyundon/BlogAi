@@ -16,3 +16,16 @@ body {
   font-family: var(--font-pretendard), sans-serif;
   background-color: var(--color-navy-950);
 }
+
+@keyframes loading-bar-indeterminate {
+  0% {
+    transform: translateX(-140%);
+  }
+  100% {
+    transform: translateX(340%);
+  }
+}
+
+.loading-bar-indeterminate {
+  animation: loading-bar-indeterminate 1.4s ease-in-out infinite;
+}
