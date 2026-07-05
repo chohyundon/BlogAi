@@ -21,7 +21,7 @@ export default function GeneratingDraft() {
   }
 
   return (
-    <div className={`${NAVY.bg} h-screen flex flex-col`}>
+    <div className={`${NAVY.bg} flex h-full min-h-0 w-full flex-col`}>
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -36,7 +36,7 @@ export default function GeneratingDraft() {
 
       <GeneratingDraftHeader />
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <GeneratingDraftPhaseContent
           payload={payload}
           phase={phase}

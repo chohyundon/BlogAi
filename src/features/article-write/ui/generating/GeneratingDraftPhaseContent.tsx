@@ -23,6 +23,7 @@ export default function GeneratingDraftPhaseContent({
   onSave,
   onRegenerate,
 }: GeneratingDraftPhaseContentProps) {
+  const content = (() => {
   switch (phase) {
     case "loading":
       return <GeneratingDraftLoadingPhase hasPayload={Boolean(payload)} />;
@@ -53,4 +54,7 @@ export default function GeneratingDraftPhaseContent({
     default:
       return null;
   }
+  })();
+
+  return <div className="flex h-full min-h-0 w-full flex-1 flex-col">{content}</div>;
 }
