@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import {
   getGenerationStatus,
   GENERATION_STATUS_CHANGE_EVENT,
@@ -23,23 +23,5 @@ function getServerSnapshot(): GenerationStatus | null {
 }
 
 export function useGenerationStatus() {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-
-  const status = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
-  );
-
-  if (process.env.NODE_ENV === "development") {
-    console.log(
-      "[generation-status:sync]",
-      `render #${renderCount.current}`,
-      "status:",
-      status,
-    );
-  }
-
-  return status;
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
