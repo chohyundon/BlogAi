@@ -1,0 +1,106 @@
+name: E2E Tests (95% gate)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        run: npx playwright test
+        continue-on-error: true
+        env:
+          CI: true
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Check 95% pass rate
+        run: node scripts/check-playwright-results.mjs playwright-results.json
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Comment PR with test results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let body = '## E2E 테스트 결과\n\n';
+
+            try {
+              const results = JSON.parse(fs.readFileSync('playwright-results.json', 'utf-8'));
+              const { expected = 0, unexpected = 0, skipped = 0, flaky = 0 } = results.stats;
+              const passed = expected + flaky;
+              const runnable = expected + unexpected + flaky;
+              const rate = runnable > 0 ? ((passed / runnable) * 100).toFixed(1) : '100.0';
+              const passed95 = parseFloat(rate) >= 95;
+
+              body += `| 항목 | 수치 |\n|------|------|\n`;
+              body += `| 통과 | ${passed}개 |\n`;
+              body += `| 실패 | ${unexpected}개 |\n`;
+              body += `| Flaky | ${flaky}개 |\n`;
+              body += `| 건너뜀 | ${skipped}개 |\n`;
+              body += `| **통과율** | **${rate}%** |\n\n`;
+              body += passed95
+                ? `✅ **95% 기준 통과** — PR 병합 가능`
+                : `❌ **95% 기준 미달** — 테스트를 수정하고 재시도해 주세요`;
+            } catch {
+              body += '⚠️ 테스트 결과 파일을 읽지 못했습니다.';
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.startsWith('## E2E 테스트 결과')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
