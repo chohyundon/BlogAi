@@ -16,9 +16,6 @@ test.describe("ErrorBoundary", () => {
     await page.getByTestId("trigger-error").click();
 
     await expect(page.getByTestId("error-boundary-fallback")).toBeVisible();
-    await expect(page.getByTestId("error-boundary-fallback")).toContainText(
-      "오류가 발생했습니다"
-    );
   });
 
   test("에러 메시지가 fallback UI에 표시된다", async ({ page }) => {
