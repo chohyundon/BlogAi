@@ -3,7 +3,7 @@
 import { useState } from "react";
 import ErrorBoundary from "@/shared/ui/ErrorBoundary";
 
-function BrokenComponent() {
+function BrokenComponent(): never {
   throw new Error("테스트용 컴포넌트 에러");
 }
 
