@@ -8,8 +8,9 @@ import {
   useState,
 } from "react";
 import DeleteModal from "@/shared/ui/DeleteModal";
+import Loading from "@/shared/ui/Loading";
 import { useRouter } from "next/navigation";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { useFilterStore } from "@/features/mypage/model/FilterStore";
 import { useAuthStore } from "@/entities/user/model/authStore";
 import { deleteTemplate } from "@/entities/template/api/deleteTemplate";
@@ -123,10 +124,8 @@ export default function MypageScreen() {
 
   if (isLoading) {
     return (
-      <main className="flex-1 ml-2 p-8 bg-navy-950 min-h-full">
-        <div className="flex items-center justify-center h-full">
-          <p className="text-white text-2xl font-bold">로딩중...</p>
-        </div>
+      <main className="flex-1 ml-2 p-8 bg-navy-950 min-h-full flex items-center justify-center">
+        <Loading />
       </main>
     );
   }
@@ -147,15 +146,6 @@ export default function MypageScreen() {
           로그인해 주세요.
         </div>
       )}
-      <ToastContainer
-        position="top-right"
-        autoClose={2000}
-        hideProgressBar
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="dark"
-      />
       <header className="flex flex-col gap-6 mb-8">
         <div className="flex items-center justify-between">
           <div>

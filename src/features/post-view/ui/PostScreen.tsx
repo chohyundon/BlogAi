@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryPost } from "@/features/post-view/lib/postWrite";
+import Loading from "@/shared/ui/Loading";
 import PostEditor from "@/features/post-view/ui/PostEditor";
 
 type PostScreenProps = {
@@ -34,7 +35,7 @@ export default function PostScreen({ postId }: PostScreenProps) {
   const { data, isLoading, isError, error } = useQueryPost(postId);
 
   if (isLoading) {
-    return <PostScreenMessage>로딩중...</PostScreenMessage>;
+    return <Loading />;
   }
 
   if (isError || !postId || !data) {
