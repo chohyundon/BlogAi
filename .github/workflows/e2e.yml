@@ -9,9 +9,45 @@ permissions:
   pull-requests: write
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (최대 3회 재시도)
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::빌드 시도 $attempt/3"
+            npm run build && echo "::endgroup::" && break
+            echo "::endgroup::"
+            if [ $attempt -lt 3 ]; then
+              echo "빌드 실패 — ${attempt}회차, 30초 후 재시도..."
+              sleep 30
+            else
+              echo "빌드 3회 모두 실패"
+              exit 1
+            fi
+          done
+
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: build
 
     steps:
       - uses: actions/checkout@v4
