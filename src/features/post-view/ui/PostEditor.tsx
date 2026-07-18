@@ -9,7 +9,7 @@ import { invalidatePost } from "@/features/post-view/lib/postWrite";
 import { updatePost } from "@/features/post-view/lib/postEdit";
 import PostButton from "@/features/post-view/ui/PostButton";
 import PostMarkdown from "@/features/post-view/ui/PostMarkdown";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import { invalidateUserData } from "@/entities/user/api/queryUserData";
 import type { DatabaseDocument } from "@/shared/types/database";
 

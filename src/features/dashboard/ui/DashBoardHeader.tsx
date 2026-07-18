@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import { ToastContainer } from "react-toastify";
 import Link from "next/link";
 

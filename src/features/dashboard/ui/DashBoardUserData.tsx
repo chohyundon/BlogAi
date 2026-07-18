@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryUserData } from "@/entities/user/api/queryUserData";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import type { DatabaseDocument } from "@/shared/types/database";
 import { recentTemplates } from "@/features/dashboard/model/RecentTemplate";
 import { ArrowRight } from "lucide-react";

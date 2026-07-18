@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import Footer from "@/shared/ui/Footer";
 import AuthModal from "@/features/auth/ui/AuthModal";
 import HomeTitleSection from "@/widgets/landing/title/HomeTitleSection";

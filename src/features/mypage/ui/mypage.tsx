@@ -7,11 +7,11 @@ import {
   useRef,
   useState,
 } from "react";
-import DeleteModal from "@/features/delete-template/ui/DeleteModal";
+import DeleteModal from "@/shared/ui/DeleteModal";
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
 import { useFilterStore } from "@/features/mypage/model/FilterStore";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import { deleteTemplate } from "@/entities/template/api/deleteTemplate";
 import { TEMPLATES_PER_PAGE } from "@/entities/template/config/Template";
 import MypageToolbar from "@/features/mypage/ui/MypageToolbar";
@@ -37,7 +37,7 @@ export default function MypageScreen() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const selectedTemplateType = useFilterStore(
-    (state) => state.selectedTemplateType
+    (state) => state.selectedTemplateType,
   );
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -46,7 +46,7 @@ export default function MypageScreen() {
   const [optimisticTemplates, markTemplateDeleted] = useOptimistic(
     templatesData ?? [],
     (current, postIdToRemove: string) =>
-      current.filter((post) => String(post.id) !== postIdToRemove)
+      current.filter((post) => String(post.id) !== postIdToRemove),
   );
 
   useEffect(() => {
@@ -80,18 +80,18 @@ export default function MypageScreen() {
       if (user?.id) {
         queryClient.setQueryData<DatabaseDocument[] | null>(
           userDataQueryKey(user.id),
-          (old) => old?.filter((post) => String(post.id) !== postId) ?? []
+          (old) => old?.filter((post) => String(post.id) !== postId) ?? [],
         );
       }
 
       const nextFiltered = filterPostsByTypeAndSearch(
         (templatesData ?? []).filter((post) => String(post.id) !== postId),
         selectedTemplateType,
-        searchQuery
+        searchQuery,
       );
       const nextTotalPages = Math.max(
         1,
-        Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE)
+        Math.ceil(nextFiltered.length / TEMPLATES_PER_PAGE),
       );
       setCurrentPage((page) => Math.min(page, nextTotalPages - 1));
       setDeleteTargetId(null);
@@ -102,18 +102,18 @@ export default function MypageScreen() {
   const filteredTemplates = filterPostsByTypeAndSearch(
     optimisticTemplates,
     selectedTemplateType,
-    searchQuery
+    searchQuery,
   );
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredTemplates.length / TEMPLATES_PER_PAGE)
+    Math.ceil(filteredTemplates.length / TEMPLATES_PER_PAGE),
   );
   const rangeStart = currentPage * TEMPLATES_PER_PAGE;
   const sortedTemplates = sortPostsByCreatedDesc(filteredTemplates);
   const currentPageItems = sortedTemplates.slice(
     rangeStart,
-    rangeStart + TEMPLATES_PER_PAGE
+    rangeStart + TEMPLATES_PER_PAGE,
   );
 
   const handleSearchQuery = (e: React.ChangeEvent<HTMLInputElement>) => {

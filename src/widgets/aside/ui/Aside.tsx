@@ -7,7 +7,7 @@ import { CircleUserRound, LogOut, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/shared/ui/Modal";
 import AuthModal from "@/features/auth/ui/AuthModal";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import { usePathname, useRouter } from "next/navigation";
 
 type AsideProps = {
