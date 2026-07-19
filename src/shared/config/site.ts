@@ -1,7 +1,20 @@
 export const siteUrl = "https://www.blogai.store";
 export const siteName = "BlogAi";
 export const siteDescription =
-  "BlogAi는 키워드 기반으로 블로그 글을 생성하고, 제목과 본문 초안을 빠르게 작성할 수 있는 AI 글쓰기 서비스입니다.";
+  "개발자를 위한 AI 기술 블로그 자동 생성 서비스. TIL, 트러블슈팅, 심층 분석 등 기술 블로그 글을 키워드 하나로 AI가 자동 작성합니다.";
+export const siteKeywords = [
+  "BlogAi",
+  "BlogAI",
+  "blogai.store",
+  "AI 블로그",
+  "기술 블로그",
+  "개발자 블로그",
+  "개발자 AI 블로그 자동 생성",
+  "기술 블로그 AI 작성",
+  "AI TIL 블로그",
+  "개발 블로그 자동화",
+  "블로그 글쓰기",
+];
 export const ogImage = "/opengraph-image";
 
 export const websiteJsonLd = {

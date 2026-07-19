@@ -5,6 +5,7 @@ import { useAuthStore } from "@/entities/user/model/authStore";
 import type { DatabaseDocument } from "@/shared/types/database";
 import { recentTemplates } from "@/features/dashboard/model/RecentTemplate";
 import { ArrowRight } from "lucide-react";
+import Loading from "@/shared/ui/Loading";
 import Link from "next/link";
 
 export default function DashBoardUserData() {
@@ -26,7 +27,7 @@ export default function DashBoardUserData() {
         </Link>
       </div>
       {isLoading ? (
-        <p className="text-slate-400 text-sm">로딩 중...</p>
+        <Loading />
       ) : (
         <div className="space-y-3">
           <div className="flex flex-col gap-4">

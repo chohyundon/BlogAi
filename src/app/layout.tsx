@@ -1,15 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "@/app/globals.css";
 import { Providers } from "@/app/providers";
 import {
   ogImage,
   siteDescription,
+  siteKeywords,
   siteName,
   siteUrl,
   websiteJsonLd,
 } from "@/shared/config/site";
-import AppShell from "@/widgets/app-shell/ui/AppShell";
+import Shell from "@/app/_shell";
 
 const pretendard = localFont({
   src: [
@@ -34,6 +35,11 @@ const pretendard = localFont({
   variable: "--font-pretendard",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -42,21 +48,10 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: siteName,
-  keywords: [
-    "BlogAi",
-    "BlogAI",
-    "blogai.store",
-    "AI 블로그",
-    "기술 블로그",
-    "개발자 블로그",
-    "블로그 글쓰기",
-  ],
+  keywords: siteKeywords,
   authors: [{ name: siteName }],
   creator: siteName,
   publisher: siteName,
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     url: siteUrl,
@@ -96,7 +91,7 @@ export default function RootLayout({
           }}
         />
         <Providers>
-          <AppShell>{children}</AppShell>
+          <Shell>{children}</Shell>
         </Providers>
       </body>
     </html>

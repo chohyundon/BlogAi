@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import Aside from "@/widgets/aside/ui/Aside";
 import Header from "@/widgets/header/ui/Header";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 

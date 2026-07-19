@@ -4,3 +4,4 @@ export { default as Loading } from "./Loading";
 export { default as Logo } from "./Logo";
 export { default as Modal } from "./Modal";
 export { default as DeleteModal } from "./DeleteModal";
+export { default as ErrorBoundary } from "./ErrorBoundary";
