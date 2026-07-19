@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import { invalidateUserData } from "@/entities/user/api/queryUserData";
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
 import { StoredPostLimitError } from "@/entities/template/model/postLimit";

@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidatePost } from "@/features/post-view/lib/postWrite";
 import { updatePost } from "@/features/post-view/lib/postEdit";
 import PostButton from "@/features/post-view/ui/PostButton";
 import PostMarkdown from "@/features/post-view/ui/PostMarkdown";
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import { invalidateUserData } from "@/entities/user/api/queryUserData";
 import type { DatabaseDocument } from "@/shared/types/database";
 
@@ -70,15 +70,6 @@ export default function PostEditor({ postId, post }: PostEditorProps) {
       </div>
       <div className="flex flex-wrap items-center mt-4 justify-between gap-4 px-4 py-2 bg-navy-900 border border-navy-700 rounded-t-xl">
         <PostButton handleDownload={handleDownload} handleEdit={handleEdit} />
-        <ToastContainer
-          position="top-right"
-          autoClose={2000}
-          hideProgressBar
-          newestOnTop
-          closeOnClick
-          pauseOnHover
-          theme="dark"
-        />
       </div>
       <section className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-px bg-navy-700 border border-t-0 border-navy-700 rounded-b-xl min-h-[600px] mb-8 ">
         <aside className="bg-navy-900 flex flex-col">

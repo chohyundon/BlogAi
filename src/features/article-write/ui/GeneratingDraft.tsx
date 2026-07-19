@@ -1,6 +1,5 @@
 "use client";
 
-import { ToastContainer } from "react-toastify";
 import { NAVY } from "@/features/article-write/ui/dashboardWriteStyles";
 import GeneratingDraftHeader from "@/features/article-write/ui/generating/GeneratingDraftHeader";
 import GeneratingDraftPhaseContent from "@/features/article-write/ui/generating/GeneratingDraftPhaseContent";
@@ -22,17 +21,6 @@ export default function GeneratingDraft() {
 
   return (
     <div className={`${NAVY.bg} flex h-full min-h-0 w-full flex-col`}>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-      />
 
       <GeneratingDraftHeader />
 

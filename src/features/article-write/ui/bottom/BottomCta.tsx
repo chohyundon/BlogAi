@@ -1,7 +1,7 @@
 "use client";
 
 import { Lightbulb } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import Button from "@/shared/ui/Button";
 import { BottomCtaProps } from "@/features/article-write/model/BottomCtaType";
@@ -125,15 +125,6 @@ export default function BottomCta({
           )}
         </div>
       </div>
-      <ToastContainer
-        position="top-right"
-        autoClose={2500}
-        hideProgressBar
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="dark"
-      />
     </>
   );
 }

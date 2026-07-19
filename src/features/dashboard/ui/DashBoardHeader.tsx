@@ -1,7 +1,6 @@
 "use client";
 
-import { useAuthStore } from "@/features/auth/model/AuthStore";
-import { ToastContainer } from "react-toastify";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import Link from "next/link";
 
 export default function DashBoardHeader() {
@@ -14,15 +13,6 @@ export default function DashBoardHeader() {
           어서오세요, {`${user?.user_metadata?.full_name} 님`}
         </h2>
       </div>
-      <ToastContainer
-        position="top-right"
-        autoClose={2000}
-        hideProgressBar
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        theme="dark"
-      />
       <Link
         className="inline-block px-4 py-2 font-bold shadow-lg bg-amber-500 hover:bg-amber-600 transition-all text-white rounded-lg"
         href="/write"

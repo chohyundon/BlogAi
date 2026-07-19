@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthStore } from "@/features/auth/model/AuthStore";
+import { useAuthStore } from "@/entities/user/model/authStore";
 import Logo from "@/shared/ui/Logo";
 import Link from "next/link";
 import { DashBoardSideList } from "@/shared/config/DashBoardSideList";
