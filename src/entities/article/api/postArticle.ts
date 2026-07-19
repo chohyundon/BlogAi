@@ -1,5 +1,4 @@
 import type { GeneratedArticle } from "@/entities/article/model/generatedArticle";
-import { ensureUnderStoredPostLimit } from "@/entities/template/api/getTemplate";
 import type { PostArticleInput } from "@/entities/article/model/postArticleInput";
 
 function endpoint(): "/api/openai" | "/api/gemini" {
@@ -12,7 +11,6 @@ function endpoint(): "/api/openai" | "/api/gemini" {
 export async function postArticle(
   data: PostArticleInput
 ): Promise<GeneratedArticle> {
-  await ensureUnderStoredPostLimit();
 
   const res = await fetch(endpoint(), {
     method: "POST",
