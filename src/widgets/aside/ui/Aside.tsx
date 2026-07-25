@@ -123,24 +123,18 @@ export default function Aside({ open = true, onClose }: AsideProps) {
         <nav className="flex flex-1 flex-col w-full overflow-y-auto">
           <ul className="flex flex-col gap-2 w-[85%] mx-auto py-2">
             {DashBoardSideList.map((item) => (
-              <li
-                key={item.id}
-                role="button"
-                tabIndex={0}
-                className={`flex gap-4 items-center text-sm cursor-pointer p-2 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset ${
-                  activeItem === item.id
-                    ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                    : "text-slate-300 hover:bg-navy-800 hover:text-white border border-transparent"
-                }`}
-                onClick={() => handleActiveItem(item.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleActiveItem(item.id);
-                  }
-                }}>
-                <item.icon />
-                {item.name}
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => handleActiveItem(item.id)}
+                  className={`w-full flex gap-4 items-center text-sm cursor-pointer p-2 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-inset ${
+                    activeItem === item.id
+                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                      : "text-slate-300 hover:bg-navy-800 hover:text-white border border-transparent"
+                  }`}>
+                  <item.icon />
+                  {item.name}
+                </button>
               </li>
             ))}
           </ul>

@@ -31,7 +31,7 @@ export default function Footer() {
             Github
           </a>
         </nav>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-400">
           © {year} BlogAi. All rights reserved.
         </p>
       </div>

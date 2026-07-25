@@ -32,7 +32,7 @@ export default function HomeTitleSection({
         <button
           type="button"
           onClick={onStartFree}
-          className="cursor-pointer bg-amber-500 hover:bg-amber-400 text-white text-lg font-bold px-10 py-4 rounded-xl transition-all shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2">
+          className="cursor-pointer bg-amber-500 hover:bg-amber-400 text-navy-950 text-lg font-bold px-10 py-4 rounded-xl transition-all shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2">
           Start for Free <ArrowRight className="size-4" />
         </button>
         <span className="bg-navy-800 border border-navy-600 text-slate-200 text-lg font-bold px-10 py-4 rounded-xl hover:bg-navy-700 transition-all flex items-center justify-center gap-2">
